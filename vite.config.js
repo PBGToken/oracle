@@ -4,15 +4,15 @@ import makeReactPlugin from "@vitejs/plugin-react"
 
 // process.argv[1] is the vite binary
 const repoRoot = join(dirname(process.argv[1]), "../../")
-const srcDir = join(repoRoot, "src")
-const assetsDir = join(repoRoot, "assets")
-const dstDir = join(repoRoot, "dist/")
+const srcDir = join(repoRoot, "./src")
+const assetsDir = join(repoRoot, "./src/assets")
+const dstDir = join(repoRoot, "./")
 
 export default defineConfig({
     root: srcDir,
     build: {
         outDir: dstDir,
-        emptyOutDir: true,
+        emptyOutDir: false,
         minify: false
     },
     define: {},
