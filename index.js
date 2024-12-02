@@ -7054,6 +7054,7 @@ function requireClient() {
 var clientExports = requireClient();
 const root = document.getElementById("root");
 clientExports.createRoot(root).render(/* @__PURE__ */ jsxRuntimeExports.jsx(reactExports.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { children: "Hello world" }) }));
+const subscriptionUrl = "http://ec2-44-203-242-209.compute-1.amazonaws.com:3000";
 const VAPID_PUBLIC_KEY = "BD-RNoqSQfw06BlHF0I8v4YKcRrSrcQtTPGRKYQzISkLtcJ0XFfjZ_IPA8xJwsjeKx2WL183jdWQig-6fnPXT30";
 async function main() {
   await registerServiceWorker();
@@ -7104,7 +7105,7 @@ function urlBase64ToUint8Array(base64String) {
 }
 async function sendSubscriptionToServer(subscription) {
   try {
-    const response = await fetch("http://stream.preprod.pbgtoken.io:3000/subscribe", {
+    const response = await fetch(`${subscriptionUrl}/subscribe`, {
       method: "POST",
       body: JSON.stringify(subscription),
       headers: {
