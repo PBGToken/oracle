@@ -10,10 +10,16 @@ const dstDir = join(repoRoot, "./")
 
 export default defineConfig({
     root: srcDir,
+    base: "./",
     build: {
         outDir: dstDir,
         emptyOutDir: false,
-        minify: false
+        minify: false,
+        rollupOptions: {
+            output: {
+              entryFileNames: "index.js",
+            }
+        }
     },
     define: {},
     resolve: {},
