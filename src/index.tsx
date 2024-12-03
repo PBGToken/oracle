@@ -47,8 +47,6 @@ export function App() {
                 started = true
                 try {
                     await registerServiceWorker(log)
-                    await requestPermissions(log)
-                    await subscribeUserToPush(log)
                 } catch (e) {
                     setErrors(errors.concat([(e as Error).message]))
                 }

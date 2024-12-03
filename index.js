@@ -25713,8 +25713,6 @@ function App() {
         started = true;
         try {
           await registerServiceWorker(log);
-          await requestPermissions(log);
-          await subscribeUserToPush(log);
         } catch (e) {
           setErrors(errors.concat([e.message]));
         }
@@ -25725,35 +25723,35 @@ function App() {
   return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(jsxDevRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("h1", { children: "Hello world" }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 62,
+      lineNumber: 60,
       columnNumber: 9
     }, this),
     !enabled && /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("button", { disabled: enabled, onClick: enableNotifications, children: "Enable notifications" }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 63,
+      lineNumber: 61,
       columnNumber: 22
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { children: infos.map((msg, i) => /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("p", { children: msg }, i, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 64,
+      lineNumber: 62,
       columnNumber: 37
     }, this)) }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 64,
+      lineNumber: 62,
       columnNumber: 9
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(StyledErrors, { children: errors.map((e, i) => /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("p", { children: e }, i, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 65,
+      lineNumber: 63,
       columnNumber: 45
     }, this)) }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 65,
+      lineNumber: 63,
       columnNumber: 9
     }, this)
   ] }, void 0, true, {
     fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-    lineNumber: 61,
+    lineNumber: 59,
     columnNumber: 10
   }, this);
 }
