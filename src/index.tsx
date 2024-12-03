@@ -22,11 +22,25 @@ const VAPID_PUBLIC_KEY = "BD-RNoqSQfw06BlHF0I8v4YKcRrSrcQtTPGRKYQzISkLtcJ0XFfjZ_
 export function App() {
     let [infos, setInfos] = useState<string[]>([])
     let [errors, setErrors] = useState<string[]>([])
+    const [enabled, setEnabled] = useState(false)
 
     const log = (msg:string) => {
         setInfos(infos.concat([msg]))
     }
 
+    const enableNotifications = async () => {
+        if (!enabled) {
+            try {
+                await requestPermissions(log)
+                await subscribeUserToPush(log)
+
+                setEnabled(true)
+            } catch (e) {
+                setErrors(errors.concat([(e as Error).message]))
+            }
+        }
+    }
+    
     useEffect(() => {
         const fn = async () => {
             if (!started) {
@@ -46,6 +60,7 @@ export function App() {
     
     return <>
         <h1>Hello world</h1>
+        {!enabled && <button disabled={enabled} onClick={enableNotifications}>Enable notifications</button>}
         <div>{infos.map((msg, i) => <p key={i}>{msg}</p>)}</div>
         <StyledErrors>{errors.map((e, i) => <p key={i}>{e}</p>)}</StyledErrors>
     </>
@@ -71,7 +86,7 @@ async function requestPermissions(log: (msg: string) => void) {
     if (!("Notification" in window)) {
         throw new Error("Notification interface not available")
     }
-    
+
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
         log('Notifications enabled!')

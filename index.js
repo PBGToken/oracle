@@ -25692,8 +25692,20 @@ const VAPID_PUBLIC_KEY = "BD-RNoqSQfw06BlHF0I8v4YKcRrSrcQtTPGRKYQzISkLtcJ0XFfjZ_
 function App() {
   let [infos, setInfos] = reactExports.useState([]);
   let [errors, setErrors] = reactExports.useState([]);
+  const [enabled, setEnabled] = reactExports.useState(false);
   const log = (msg) => {
     setInfos(infos.concat([msg]));
+  };
+  const enableNotifications = async () => {
+    if (!enabled) {
+      try {
+        await requestPermissions(log);
+        await subscribeUserToPush(log);
+        setEnabled(true);
+      } catch (e) {
+        setErrors(errors.concat([e.message]));
+      }
+    }
   };
   reactExports.useEffect(() => {
     const fn = async () => {
@@ -25713,30 +25725,35 @@ function App() {
   return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(jsxDevRuntimeExports.Fragment, { children: [
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("h1", { children: "Hello world" }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 48,
+      lineNumber: 62,
       columnNumber: 9
+    }, this),
+    !enabled && /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("button", { disabled: enabled, onClick: enableNotifications, children: "Enable notifications" }, void 0, false, {
+      fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
+      lineNumber: 63,
+      columnNumber: 22
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("div", { children: infos.map((msg, i) => /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("p", { children: msg }, i, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 49,
+      lineNumber: 64,
       columnNumber: 37
     }, this)) }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 49,
+      lineNumber: 64,
       columnNumber: 9
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(StyledErrors, { children: errors.map((e, i) => /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("p", { children: e }, i, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 50,
+      lineNumber: 65,
       columnNumber: 45
     }, this)) }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-      lineNumber: 50,
+      lineNumber: 65,
       columnNumber: 9
     }, this)
   ] }, void 0, true, {
     fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/index.tsx",
-    lineNumber: 47,
+    lineNumber: 61,
     columnNumber: 10
   }, this);
 }
