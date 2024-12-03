@@ -2,7 +2,7 @@
   "name": "multi-sig-oracle-client",
   "version": "1.0.0",
   "scripts": {
-    "build:ui": "npx vite build -c vite.config.js",
+    "build:ui": "NODE_ENV=development npx vite build -c vite.config.js",
     "dev:ui": "npx vite -c vite.config.js --host"
   },
   "type": "module",

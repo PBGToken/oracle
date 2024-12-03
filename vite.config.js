@@ -20,6 +20,11 @@ export default defineConfig({
               entryFileNames: "index.js",
             }
         }
+        ,
+        terserOptions: {
+            compress: false,
+            mangle: false,
+          }
     },
     define: {},
     resolve: {},

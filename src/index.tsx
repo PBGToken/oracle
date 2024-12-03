@@ -1,48 +1,86 @@
-import { StrictMode } from "react"
+import { StrictMode, useEffect, useState } from "react"
 import { createRoot } from "react-dom/client"
+import { styled } from "styled-components"
 
 const root = document.getElementById("root") as HTMLElement
 
+let started = false
+
 createRoot(root).render(
     <StrictMode>
-        <h1>Hello world</h1>
+        <App />
     </StrictMode>
 )
 
 // TODO: get this from api instead of hardcoded
 // end point can then check key
-const subscriptionUrl = "http://ec2-44-203-242-209.compute-1.amazonaws.com:3000"
+//const subscriptionUrl = "http://ec2-44-203-242-209.compute-1.amazonaws.com:3000"
+const subscriptionUrl = "https://stream.preprod.pbgtoken.io:3000"
 
 const VAPID_PUBLIC_KEY = "BD-RNoqSQfw06BlHF0I8v4YKcRrSrcQtTPGRKYQzISkLtcJ0XFfjZ_IPA8xJwsjeKx2WL183jdWQig-6fnPXT30"
 
-async function main() {
-    await registerServiceWorker()
-    await requestPermissions()
-    await subscribeUserToPush()
+export function App() {
+    let [infos, setInfos] = useState<string[]>([])
+    let [errors, setErrors] = useState<string[]>([])
+
+    const log = (msg:string) => {
+        setInfos(infos.concat([msg]))
+    }
+
+    useEffect(() => {
+        const fn = async () => {
+            if (!started) {
+                started = true
+                try {
+                    await registerServiceWorker(log)
+                    await requestPermissions(log)
+                    await subscribeUserToPush(log)
+                } catch (e) {
+                    setErrors(errors.concat([(e as Error).message]))
+                }
+            }
+        }
+
+        fn()
+    }, [])
+    
+    return <>
+        <h1>Hello world</h1>
+        <div>{infos.map((msg, i) => <p key={i}>{msg}</p>)}</div>
+        <StyledErrors>{errors.map((e, i) => <p key={i}>{e}</p>)}</StyledErrors>
+    </>
 }
 
-async function registerServiceWorker() {
-// Register the service worker
+const StyledErrors = styled.div`
+    color: red;
+`
+
+async function registerServiceWorker(log: (msg: string) => void) {
+    // Register the service worker
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         try {
             const registration = await navigator.serviceWorker.register('./service-worker.js')
-            console.log('Service Worker registered with scope:', registration.scope)
+            log('Service Worker registered with scope:' + registration.scope)
         } catch (e) {
-            console.error('Service Worker registration failed:', e)
+            throw new Error('Service Worker registration failed:' + (e as Error).message)
         }
     }
 }
 
-async function requestPermissions() {
+async function requestPermissions(log: (msg: string) => void) {
+    if (!("Notification" in window)) {
+        throw new Error("Notification interface not available")
+    }
+    
     const permission = await Notification.requestPermission();
     if (permission === 'granted') {
-        console.log('Notifications enabled!');
+        log('Notifications enabled!')
     } else {
-        console.error('Notifications denied!');
+        throw new Error('Notifications denied!')
     }
 }
 
-async function subscribeUserToPush() {
+async function subscribeUserToPush(log: (msg: string) => void) {
     try {
         const serviceWorkerRegistration = await navigator.serviceWorker.ready
 
@@ -51,11 +89,12 @@ async function subscribeUserToPush() {
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
         })
     
-        console.log('User is subscribed:', subscription);
+        log('User is subscribed:' + JSON.stringify(subscription))
+
         // Send the subscription object to your server
-        await sendSubscriptionToServer(subscription);
+        await sendSubscriptionToServer(subscription, log)
     } catch (e) {
-        console.error('Failed to subscribe the user:', e);
+        throw new Error('Failed to subscribe the user:' +  (e as Error).message)        
     }
 }
   
@@ -75,7 +114,7 @@ function urlBase64ToUint8Array(base64String: string) {
   
 
 // TODO: what is the type of `subscription`?
-async function sendSubscriptionToServer(subscription: any) {
+async function sendSubscriptionToServer(subscription: PushSubscription, log: (msg: string) => void) {
     try {
         const response = await fetch(`${subscriptionUrl}/subscribe`, {
           method: 'POST',
@@ -87,10 +126,8 @@ async function sendSubscriptionToServer(subscription: any) {
 
         const data = await response.json()
 
-        console.log('Server received subscription:', data);
+        log('Server received subscription:' + JSON.stringify(data));
     } catch (e) {
-        console.error('Error sending subscription to server:', e);
+        throw new Error('Error sending subscription to server:' + (e as Error).message)
     }
-}  
-  
-main()
+}
