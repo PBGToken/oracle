@@ -1,0 +1,48 @@
+import styled from "styled-components"
+import { useIsAuthorized, useIsSubscribed, useNotificationPermission, usePrivateKey } from "../hooks"
+import { makeBip32PrivateKey } from "@helios-lang/tx-utils"
+import { hexToBytes } from "@helios-lang/codec-utils"
+import { Button } from "./Button"
+import { ErrorMessage } from "./ErrorMessage"
+
+const borderRadius = 5
+
+type StatusProps = {
+    serviceWorkerStatus: string
+    onChangeKey: () => void
+}
+
+export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
+    const [privateKey] = usePrivateKey()
+    const isAuthorized = useIsAuthorized()
+    const isSubscribed = useIsSubscribed()
+    const [granted, grant, error] = useNotificationPermission()
+
+    const pubKeyHash =
+        privateKey != ""
+            ? makeBip32PrivateKey(hexToBytes(privateKey))
+                  .derivePubKey()
+                  .hash()
+                  .toHex()
+            : ""
+
+    return (
+        <StyledStatusPanel>
+            <h2>Status</h2>
+            <p>Service worker: {serviceWorkerStatus}</p>
+            <p>{granted ? "Notification permission granted" : "Notification permission not granted"}</p>
+            {!granted && <Button onClick={grant}>Enable Notifications</Button>}
+            {error && <ErrorMessage>{error}</ErrorMessage>}
+            <p>Key: {pubKeyHash == "" ? "unset" : pubKeyHash}</p>
+            <p>{isAuthorized ? "Authorized" : "Not authorized"}</p>
+            <p>{isSubscribed ? "Subscribed" : "Not subscribed"}</p>
+            <Button onClick={onChangeKey}>{privateKey == "" ? "Set Key" : "Change Key"}</Button>
+        </StyledStatusPanel>
+    )
+}
+
+const StyledStatusPanel = styled.div`
+    background: ${({ theme }) => theme.colors.panelBg};
+    border-radius: ${borderRadius}px;
+    padding: 10px;
+`

@@ -4,8 +4,8 @@ import makeReactPlugin from "@vitejs/plugin-react"
 
 // process.argv[1] is the vite binary
 const repoRoot = join(dirname(process.argv[1]), "../../")
-const srcDir = join(repoRoot, "./src")
-const assetsDir = join(repoRoot, "./src/assets")
+const srcDir = join(repoRoot, "./src/ui")
+//const assetsDir = join(repoRoot, "./src/assets")
 const dstDir = join(repoRoot, "./")
 
 export default defineConfig({
@@ -17,21 +17,20 @@ export default defineConfig({
         minify: false,
         rollupOptions: {
             output: {
-              entryFileNames: "index.js",
+                entryFileNames: "index.js"
             }
-        }
-        ,
+        },
         terserOptions: {
             compress: false,
-            mangle: false,
-          }
+            mangle: false
+        }
     },
     define: {},
     resolve: {},
     server: {
         port: 80
     },
-    publicDir: assetsDir,
+    //publicDir: assetsDir,
     plugins: [
         makeReactPlugin({
             babel: {
