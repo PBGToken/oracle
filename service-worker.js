@@ -20494,7 +20494,7 @@ function createAuthToken(privateKey, deviceId) {
 }
 async function fetchSecrets(privateKey, deviceId) {
   const response = await fetch(
-    `https://api.oracle.preprod.pbgtoken.io/secrets`,
+    `https://api.oracle.token.pbg.io/secrets`,
     {
       method: "GET",
       mode: "cors",
@@ -20515,7 +20515,7 @@ async function createSubscription(privateKey, deviceId) {
       userVisibleOnly: true,
       applicationServerKey: new Uint8Array(VAPID_BASE64_CODEC.decode(VAPID_PUBLIC_KEY))
     });
-    const response = await fetch(`https://api.oracle.preprod.pbgtoken.io/subscribe`, {
+    const response = await fetch(`https://api.oracle.token.pbg.io/subscribe`, {
       method: "POST",
       mode: "cors",
       headers: {
@@ -20567,7 +20567,7 @@ async function signFeed(options) {
 }
 async function fetchPriceFeed(privateKey, deviceId) {
   try {
-    const response = await fetch(`https://api.oracle.preprod.pbgtoken.io/feed`, {
+    const response = await fetch(`https://api.oracle.token.pbg.io/feed`, {
       method: "GET",
       mode: "cors",
       headers: {
@@ -20595,7 +20595,7 @@ async function fetchPriceFeed(privateKey, deviceId) {
 }
 async function putSignature(privateKey, deviceId, signature) {
   try {
-    await fetch(`https://api.oracle.preprod.pbgtoken.io/feed`, {
+    await fetch(`https://api.oracle.token.pbg.io/feed`, {
       method: "POST",
       mode: "cors",
       headers: {

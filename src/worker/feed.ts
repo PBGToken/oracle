@@ -54,7 +54,7 @@ export async function signFeed(options: NotificationOptions): Promise<void> {
 
 async function fetchPriceFeed(privateKey: string, deviceId: number): Promise<Tx | undefined> {
     try {
-        const response = await fetch(`https://api.oracle.preprod.pbgtoken.io/feed`, {
+        const response = await fetch(`https://api.oracle.token.pbg.io/feed`, {
             method: "GET",
             mode: "cors",
             headers: {
@@ -84,7 +84,7 @@ async function fetchPriceFeed(privateKey: string, deviceId: number): Promise<Tx 
 
 async function putSignature(privateKey: string, deviceId: number, signature: Signature): Promise<void> {
     try {
-        await fetch(`https://api.oracle.preprod.pbgtoken.io/feed`, {
+        await fetch(`https://api.oracle.token.pbg.io/feed`, {
             method: "POST",
             mode: "cors",
             headers: {

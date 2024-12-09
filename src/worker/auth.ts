@@ -84,7 +84,7 @@ export function createAuthToken(
 // undefined return value signifies unauthorized
 async function fetchSecrets(privateKey: string, deviceId: number): Promise<Secrets | undefined> {
     const response = await fetch(
-        `https://api.oracle.preprod.pbgtoken.io/secrets`,
+        `https://api.oracle.token.pbg.io/secrets`,
         {
             method: "GET",
             mode: "cors",
@@ -109,7 +109,7 @@ async function createSubscription(privateKey: string, deviceId: number): Promise
             applicationServerKey: new Uint8Array(VAPID_BASE64_CODEC.decode(VAPID_PUBLIC_KEY))
         })
 
-        const response = await fetch(`https://api.oracle.preprod.pbgtoken.io/subscribe`, {
+        const response = await fetch(`https://api.oracle.token.pbg.io/subscribe`, {
             method: "POST",
             mode: "cors",
             headers: {
