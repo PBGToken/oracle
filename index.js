@@ -14341,7 +14341,7 @@ function requireReactDom_development() {
         /*  */
         2
       );
-      var Layout = (
+      var Layout2 = (
         /*    */
         4
       );
@@ -15053,10 +15053,10 @@ function requireReactDom_development() {
         if ((currentlyRenderingFiber$1.mode & StrictEffectsMode) !== NoMode) {
           fiberFlags |= MountLayoutDev;
         }
-        return mountEffectImpl(fiberFlags, Layout, create, deps);
+        return mountEffectImpl(fiberFlags, Layout2, create, deps);
       }
       function updateLayoutEffect(create, deps) {
-        return updateEffectImpl(Update, Layout, create, deps);
+        return updateEffectImpl(Update, Layout2, create, deps);
       }
       function imperativeHandleEffect(create, ref) {
         if (typeof ref === "function") {
@@ -15094,7 +15094,7 @@ function requireReactDom_development() {
         if ((currentlyRenderingFiber$1.mode & StrictEffectsMode) !== NoMode) {
           fiberFlags |= MountLayoutDev;
         }
-        return mountEffectImpl(fiberFlags, Layout, imperativeHandleEffect.bind(null, create, ref), effectDeps);
+        return mountEffectImpl(fiberFlags, Layout2, imperativeHandleEffect.bind(null, create, ref), effectDeps);
       }
       function updateImperativeHandle(ref, create, deps) {
         {
@@ -15103,7 +15103,7 @@ function requireReactDom_development() {
           }
         }
         var effectDeps = deps !== null && deps !== void 0 ? deps.concat([ref]) : null;
-        return updateEffectImpl(Update, Layout, imperativeHandleEffect.bind(null, create, ref), effectDeps);
+        return updateEffectImpl(Update, Layout2, imperativeHandleEffect.bind(null, create, ref), effectDeps);
       }
       function mountDebugValue(value, formatterFn) {
       }
@@ -19627,7 +19627,7 @@ function requireReactDom_development() {
       };
       function safelyCallCommitHookLayoutEffectListMount(current22, nearestMountedAncestor) {
         try {
-          commitHookEffectListMount(Layout, current22);
+          commitHookEffectListMount(Layout2, current22);
         } catch (error2) {
           captureCommitPhaseError(current22, nearestMountedAncestor, error2);
         }
@@ -19800,7 +19800,7 @@ function requireReactDom_development() {
                 {
                   if ((flags & Passive$1) !== NoFlags$1) {
                     markComponentPassiveEffectUnmountStarted(finishedWork);
-                  } else if ((flags & Layout) !== NoFlags$1) {
+                  } else if ((flags & Layout2) !== NoFlags$1) {
                     markComponentLayoutEffectUnmountStarted(finishedWork);
                   }
                 }
@@ -19818,7 +19818,7 @@ function requireReactDom_development() {
                 {
                   if ((flags & Passive$1) !== NoFlags$1) {
                     markComponentPassiveEffectUnmountStopped();
-                  } else if ((flags & Layout) !== NoFlags$1) {
+                  } else if ((flags & Layout2) !== NoFlags$1) {
                     markComponentLayoutEffectUnmountStopped();
                   }
                 }
@@ -19839,7 +19839,7 @@ function requireReactDom_development() {
               {
                 if ((flags & Passive$1) !== NoFlags$1) {
                   markComponentPassiveEffectMountStarted(finishedWork);
-                } else if ((flags & Layout) !== NoFlags$1) {
+                } else if ((flags & Layout2) !== NoFlags$1) {
                   markComponentLayoutEffectMountStarted(finishedWork);
                 }
               }
@@ -19858,7 +19858,7 @@ function requireReactDom_development() {
               {
                 if ((flags & Passive$1) !== NoFlags$1) {
                   markComponentPassiveEffectMountStopped();
-                } else if ((flags & Layout) !== NoFlags$1) {
+                } else if ((flags & Layout2) !== NoFlags$1) {
                   markComponentLayoutEffectMountStopped();
                 }
               }
@@ -19866,7 +19866,7 @@ function requireReactDom_development() {
                 var destroy = effect.destroy;
                 if (destroy !== void 0 && typeof destroy !== "function") {
                   var hookName = void 0;
-                  if ((effect.tag & Layout) !== NoFlags) {
+                  if ((effect.tag & Layout2) !== NoFlags) {
                     hookName = "useLayoutEffect";
                   } else if ((effect.tag & Insertion) !== NoFlags) {
                     hookName = "useInsertionEffect";
@@ -19936,12 +19936,12 @@ function requireReactDom_development() {
                 if (finishedWork.mode & ProfileMode) {
                   try {
                     startLayoutEffectTimer();
-                    commitHookEffectListMount(Layout | HasEffect, finishedWork);
+                    commitHookEffectListMount(Layout2 | HasEffect, finishedWork);
                   } finally {
                     recordLayoutEffectDuration(finishedWork);
                   }
                 } else {
-                  commitHookEffectListMount(Layout | HasEffect, finishedWork);
+                  commitHookEffectListMount(Layout2 | HasEffect, finishedWork);
                 }
               }
               break;
@@ -20492,7 +20492,7 @@ function requireReactDom_development() {
                     if (destroy !== void 0) {
                       if ((tag & Insertion) !== NoFlags$1) {
                         safelyCallDestroy(deletedFiber, nearestMountedAncestor, destroy);
-                      } else if ((tag & Layout) !== NoFlags$1) {
+                      } else if ((tag & Layout2) !== NoFlags$1) {
                         {
                           markComponentLayoutEffectUnmountStarted(deletedFiber);
                         }
@@ -20647,14 +20647,14 @@ function requireReactDom_development() {
               if (finishedWork.mode & ProfileMode) {
                 try {
                   startLayoutEffectTimer();
-                  commitHookEffectListUnmount(Layout | HasEffect, finishedWork, finishedWork.return);
+                  commitHookEffectListUnmount(Layout2 | HasEffect, finishedWork, finishedWork.return);
                 } catch (error2) {
                   captureCommitPhaseError(finishedWork, finishedWork.return, error2);
                 }
                 recordLayoutEffectDuration(finishedWork);
               } else {
                 try {
-                  commitHookEffectListUnmount(Layout | HasEffect, finishedWork, finishedWork.return);
+                  commitHookEffectListUnmount(Layout2 | HasEffect, finishedWork, finishedWork.return);
                 } catch (error2) {
                   captureCommitPhaseError(finishedWork, finishedWork.return, error2);
                 }
@@ -20947,12 +20947,12 @@ function requireReactDom_development() {
               if (fiber.mode & ProfileMode) {
                 try {
                   startLayoutEffectTimer();
-                  commitHookEffectListUnmount(Layout, fiber, fiber.return);
+                  commitHookEffectListUnmount(Layout2, fiber, fiber.return);
                 } finally {
                   recordLayoutEffectDuration(fiber);
                 }
               } else {
-                commitHookEffectListUnmount(Layout, fiber, fiber.return);
+                commitHookEffectListUnmount(Layout2, fiber, fiber.return);
               }
               break;
             }
@@ -21235,7 +21235,7 @@ function requireReactDom_development() {
             case ForwardRef:
             case SimpleMemoComponent: {
               try {
-                commitHookEffectListMount(Layout | HasEffect, fiber);
+                commitHookEffectListMount(Layout2 | HasEffect, fiber);
               } catch (error2) {
                 captureCommitPhaseError(fiber, fiber.return, error2);
               }
@@ -21276,7 +21276,7 @@ function requireReactDom_development() {
             case ForwardRef:
             case SimpleMemoComponent: {
               try {
-                commitHookEffectListUnmount(Layout | HasEffect, fiber, fiber.return);
+                commitHookEffectListUnmount(Layout2 | HasEffect, fiber, fiber.return);
               } catch (error2) {
                 captureCommitPhaseError(fiber, fiber.return, error2);
               }
@@ -44291,58 +44291,68 @@ function KeyInput({ onClose }) {
     }
   };
   return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(StyledKeyInput, { children: [
-    /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Grid, { children: words.map((w2, i) => {
-      const id = (i + 1).toString();
-      return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Group, { children: [
-        /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Label, { htmlFor: id, children: id }, void 0, false, {
-          fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-          lineNumber: 45,
-          columnNumber: 29
-        }, this),
-        /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(
-          Input,
-          {
-            id,
-            name: id,
-            value: w2,
-            onChange: (e) => {
-              setWords(
-                words.slice(0, i).concat([e.target.value]).concat(words.slice(i + 1))
-              );
-            }
-          },
-          void 0,
-          false,
-          {
+    /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Layout, { children: [
+      /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("h2", { children: "Set Key" }, void 0, false, {
+        fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
+        lineNumber: 41,
+        columnNumber: 17
+      }, this),
+      words.map((w2, i) => {
+        const id = (i + 1).toString();
+        const isValid2 = BIP39_DICT_EN.indexOf(w2) != -1;
+        return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Group, { children: [
+          /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Label, { htmlFor: id, children: id }, void 0, false, {
             fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
             lineNumber: 47,
             columnNumber: 29
-          },
-          this
-        )
-      ] }, i, true, {
-        fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 44,
-        columnNumber: 13
-      }, this);
-    }) }, void 0, false, {
+          }, this),
+          /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(
+            Input,
+            {
+              id,
+              name: id,
+              value: w2,
+              $isError: w2.length > 0 && !isValid2,
+              $isValid: isValid2,
+              onChange: (e) => {
+                setWords(
+                  words.slice(0, i).concat([e.target.value]).concat(words.slice(i + 1))
+                );
+              }
+            },
+            void 0,
+            false,
+            {
+              fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
+              lineNumber: 49,
+              columnNumber: 29
+            },
+            this
+          )
+        ] }, i, true, {
+          fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
+          lineNumber: 46,
+          columnNumber: 13
+        }, this);
+      })
+    ] }, void 0, true, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
       lineNumber: 40,
       columnNumber: 13
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { disabled: !isValid, onClick: handleSave, children: "Save" }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 67,
+      lineNumber: 71,
       columnNumber: 13
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { onClick: onClose, $secondary: true, children: "Cancel" }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 70,
+      lineNumber: 75,
       columnNumber: 13
     }, this),
     error && /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(ErrorMessage, { children: error }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 74,
+      lineNumber: 79,
       columnNumber: 23
     }, this)
   ] }, void 0, true, {
@@ -44355,10 +44365,13 @@ const StyledKeyInput = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInpu
   ["align-items:center;background:", ";border-radius:5px;display:flex;flex-direction:column;padding:10px;"],
   ({ theme: theme2 }) => theme2.colors.panelBg
 );
-const Grid = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInput__Grid" })(["display:grid;grid-template-columns:auto auto auto;"]);
-const Group = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInput__Group" })(["align-items:center;display:flex;flex-direction:row;max-width:150px;"]);
-const Label = /* @__PURE__ */ dt.label.withConfig({ displayName: "KeyInput__Label" })(["width:20px;"]);
-const Input = /* @__PURE__ */ dt.input.withConfig({ displayName: "KeyInput__Input" })(["flex-grow:1;height:40px;"]);
+const Layout = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInput__Layout" })(["display:flex;flex-direction:column;gap:10px;width:100%;"]);
+const Group = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInput__Group" })(["align-items:center;display:flex;flex-direction:row;"]);
+const Label = /* @__PURE__ */ dt.label.withConfig({ displayName: "KeyInput__Label" })(["min-width:30px;"]);
+const Input = /* @__PURE__ */ dt.input.withConfig({ displayName: "KeyInput__Input" })(
+  ["flex-grow:1;height:50px;padding:0px 10px;font-size:20px;border:", ";"],
+  ({ $isError, $isValid }) => $isError ? "2px solid red" : $isValid ? "2px solid green" : "2px solid #d0d0d0"
+);
 const borderRadius = 5;
 function StatusPanel({ onChangeKey, serviceWorkerStatus }) {
   const [privateKey] = usePrivateKey();

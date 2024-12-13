@@ -5,29 +5,33 @@ const DB_VERSION = 1
 const CONFIG_TABLE = "config"
 const EVENTS_TABLE = "events"
 
+export function openDatabaseInternal(resolve: (idb: IDBDatabase) => void, reject: (e: Error | null) => void) {
+    const request = indexedDB.open(DB_NAME, DB_VERSION)
+
+    request.onupgradeneeded = (_event: IDBVersionChangeEvent) => {
+        const db = request.result
+
+        // Create object stores if they don't already exist
+        if (!db.objectStoreNames.contains(CONFIG_TABLE)) {
+            db.createObjectStore(CONFIG_TABLE, { keyPath: "key" })
+        }
+        if (!db.objectStoreNames.contains(EVENTS_TABLE)) {
+            db.createObjectStore(EVENTS_TABLE, { autoIncrement: true })
+        }
+    }
+
+    request.onsuccess = () => {
+        resolve(request.result)
+    }
+
+    request.onerror = () => {
+        reject(request.error)
+    }
+}
+
 export function openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open(DB_NAME, DB_VERSION)
-
-        request.onupgradeneeded = (_event: IDBVersionChangeEvent) => {
-            const db = request.result
-
-            // Create object stores if they don't already exist
-            if (!db.objectStoreNames.contains(CONFIG_TABLE)) {
-                db.createObjectStore(CONFIG_TABLE, { keyPath: "key" })
-            }
-            if (!db.objectStoreNames.contains(EVENTS_TABLE)) {
-                db.createObjectStore(EVENTS_TABLE, { autoIncrement: true })
-            }
-        }
-
-        request.onsuccess = () => {
-            resolve(request.result)
-        }
-
-        request.onerror = () => {
-            reject(request.error)
-        }
+        openDatabaseInternal(resolve, reject)
     })
 }
 

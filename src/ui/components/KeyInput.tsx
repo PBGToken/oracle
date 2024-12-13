@@ -37,9 +37,11 @@ export function KeyInput({ onClose }: KeyInputProps) {
 
     return (
         <StyledKeyInput>
-            <Grid>
+            <Layout>
+                <h2>Set Key</h2>
                 {words.map((w, i) => {
                     const id = (i + 1).toString()
+                    const isValid = BIP39_DICT_EN.indexOf(w) != -1
                     return (
                         <Group key={i}>
                             <Label htmlFor={id}>{id}</Label>
@@ -48,6 +50,8 @@ export function KeyInput({ onClose }: KeyInputProps) {
                                 id={id}
                                 name={id}
                                 value={w}
+                                $isError={w.length > 0 && !isValid}
+                                $isValid={isValid}
                                 onChange={(
                                     e: ChangeEvent<HTMLInputElement>
                                 ) => {
@@ -62,11 +66,12 @@ export function KeyInput({ onClose }: KeyInputProps) {
                         </Group>
                     )
                 })}
-            </Grid>
+            </Layout>
 
             <Button disabled={!isValid} onClick={handleSave}>
                 Save
             </Button>
+
             <Button onClick={onClose} $secondary={true}>
                 Cancel
             </Button>
@@ -85,23 +90,32 @@ const StyledKeyInput = styled.div`
     padding: 10px;
 `
 
-const Grid = styled.div`
-    display: grid;
-    grid-template-columns: auto auto auto;
+const Layout = styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
 `
 
 const Group = styled.div`
     align-items: center;
     display: flex;
     flex-direction: row;
-    max-width: 150px;
 `
 
 const Label = styled.label`
-    width: 20px;
+    min-width: 30px;
 `
 
-const Input = styled.input`
+type InputProps = {
+    $isError: boolean
+    $isValid: boolean
+}
+
+const Input = styled.input<InputProps>`
     flex-grow: 1;
-    height: 40px;
+    height: 50px;
+    padding: 0px 10px;
+    font-size: 20px;
+    border: ${({$isError, $isValid}) => $isError ? "2px solid red" : $isValid ? "2px solid green" : "2px solid #d0d0d0"};
 `
