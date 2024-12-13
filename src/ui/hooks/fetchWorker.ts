@@ -1,6 +1,6 @@
-export function fetchWorker(method: "get", key: "deviceId" | "events" | "isAuthorized" | "isSubscribed" | "privateKey"): Promise<any>;
+export function fetchWorker(method: "get", key: "deviceId" | "events" | "isAuthorized" | "isSubscribed" | "notificationsGranted" | "privateKey"): Promise<any>;
 export function fetchWorker(method: "set", key: "deviceId" | "privateKey", value: any): Promise<any>;
-export function fetchWorker(method: "get" | "set", key: "deviceId" | "events" | "isAuthorized" | "isSubscribed" | "privateKey", value?: any): Promise<any> {
+export function fetchWorker(method: "get" | "set", key: "deviceId" | "events" | "isAuthorized" | "isSubscribed" | "notificationsGranted" | "privateKey", value?: any): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!navigator.serviceWorker.controller) {
         return reject(new Error('Service Worker is not active'));

@@ -56,6 +56,9 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                             case "isSubscribed":
                                 handleSuccess(isSubscribed())
                                 break
+                            case "notificationsGranted":
+                                handleSuccess(getNotificationsGranted())
+                                break
                             case "privateKey":
                                 handleSuccess(await getPrivateKey())
                                 break
@@ -101,3 +104,7 @@ scope.addEventListener("push", (event: PushEvent) => {
 
     event.waitUntil(signFeed(options))
 })
+
+function getNotificationsGranted(): boolean {
+    return "Notification" in self && Notification.permission == "granted"
+}

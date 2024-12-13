@@ -20635,6 +20635,7 @@ scope.addEventListener("message", (event) => {
   };
   event.waitUntil(
     (async () => {
+      console.log("receieved message", method, key);
       try {
         switch (method) {
           case "get":
@@ -20650,6 +20651,9 @@ scope.addEventListener("message", (event) => {
                 break;
               case "isSubscribed":
                 handleSuccess(isSubscribed());
+                break;
+              case "notificationsGranted":
+                handleSuccess(getNotificationsGranted());
                 break;
               case "privateKey":
                 handleSuccess(await getPrivateKey());
@@ -20692,6 +20696,9 @@ scope.addEventListener("push", (event) => {
   };
   event.waitUntil(signFeed(options));
 });
+function getNotificationsGranted() {
+  return "Notification" in self && Notification.permission == "granted";
+}
 /*! Bundled license information:
 
 @helios-lang/ledger/src/tx/Tx.js:

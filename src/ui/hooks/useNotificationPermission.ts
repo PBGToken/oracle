@@ -1,32 +1,45 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
+import { fetchWorker } from "./fetchWorker"
 
-const initGranted =
-    "Notification" in window && Notification.permission == "granted"
-const initError =
-    "Notification" in window
+    
+
+const QUERY_KEY = "notificationsGranted"
+
+// move this into the service worker
+export function useNotificationPermission(): [boolean, () => void, string] {
+    const client = useQueryClient()
+    const [error, setError] = useState("Notification" in window
         ? Notification.permission == "denied"
             ? "Notifications previously denied"
             : ""
-        : "Notification API not available"
+        : "Notification API not available")
+    
 
-export function useNotificationPermission(): [boolean, () => void, string] {
-    const [granted, setGranted] = useState(initGranted)
-    const [error, setError] = useState(initError)
+    const query = useQuery({
+        queryKey: [QUERY_KEY],
+        queryFn: async () => {
+            const b: boolean = await fetchWorker("get", "notificationsGranted")
+
+            return b
+        }
+    })
 
     const grant = useCallback(() => {
         if ("Notification" in window) {
             Notification.requestPermission().then((permission) => {
                 if (permission == "granted") {
-                    setGranted(true)
+                    client.setQueryData([QUERY_KEY], () => true)
+                    setError("")
                 } else {
-                    setGranted(false)
+                    client.setQueryData([QUERY_KEY], () => false)
                     setError("User denied notifications")
                 }
             })
         } else {
             setError("Notification API not available")
         }
-    }, [setGranted, setError])
+    }, [client, setError])
 
-    return [granted, grant, error]
+    return [query.data ?? false, grant, error]
 }

@@ -1,9 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, UseMutationResult, useQuery, useQueryClient } from "@tanstack/react-query"
 import { fetchWorker } from "./fetchWorker"
 
 const QUERY_KEY = "deviceId"
 
-export function useDeviceId(): [number, (id: number) => void] {
+export function useDeviceId(): [number, UseMutationResult<void, Error, number>] {
     const client = useQueryClient()
 
     const query = useQuery({
@@ -25,5 +25,5 @@ export function useDeviceId(): [number, (id: number) => void] {
         }
     })
 
-    return [query.data ?? 0, (id: number) => mutation.mutate(id)]
+    return [query.data ?? 0, mutation]
 }

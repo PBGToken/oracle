@@ -26220,6 +26220,12 @@ function ft(n2) {
   }
   return o.memo(l2);
 }
+function mt(t2) {
+  for (var n2 = [], o2 = 1; o2 < arguments.length; o2++) n2[o2 - 1] = arguments[o2];
+  "undefined" != typeof navigator && "ReactNative" === navigator.product && console.warn("`keyframes` cannot be used on ReactNative, only on the web. To do animation in ReactNative please use Animated.");
+  var r2 = ae(lt.apply(void 0, __spreadArray([t2], n2, false))), s2 = $(r2);
+  return new We(s2, r2);
+}
 "undefined" != typeof navigator && "ReactNative" === navigator.product && console.warn("It looks like you've imported 'styled-components' on React Native.\nPerhaps you're looking to import 'styled-components/native'?\nRead more about this at https://www.styled-components.com/docs/basics#react-native");
 var St = "__sc-".concat(f, "__");
 "undefined" != typeof window && (window[St] || (window[St] = 0), 1 === window[St] && console.warn("It looks like there are several instances of 'styled-components' initialized in this application. This may cause dynamic styles to not render properly, errors during the rehydration process, a missing theme prop, and makes your application bigger without good reason.\n\nSee https://s-c.sh/2BAXzed for more info."), window[St] += 1);
@@ -32356,36 +32362,36 @@ function fetchWorker(method, key, value) {
     }, [messageChannel.port2]);
   });
 }
-const QUERY_KEY$2 = "deviceId";
+const QUERY_KEY$3 = "deviceId";
 function useDeviceId() {
   const client2 = useQueryClient();
   const query = useQuery({
-    queryKey: [QUERY_KEY$2],
+    queryKey: [QUERY_KEY$3],
     queryFn: async () => {
       const id = await fetchWorker("get", "deviceId");
       return id;
     }
   });
   const mutation = useMutation({
-    mutationKey: [QUERY_KEY$2],
+    mutationKey: [QUERY_KEY$3],
     mutationFn: async (id) => {
       await fetchWorker("set", "deviceId", id);
     },
     onSuccess: (_data, id) => {
-      client2.setQueryData([QUERY_KEY$2], () => id);
+      client2.setQueryData([QUERY_KEY$3], () => id);
     }
   });
-  return [query.data ?? 0, (id) => mutation.mutate(id)];
+  return [query.data ?? 0, mutation];
 }
 const useWorkerTickInternal = createGlobalState("workerTick", 0);
 function useWorkerTick() {
   return useWorkerTickInternal()[0];
 }
-const QUERY_KEY$1 = "events";
+const QUERY_KEY$2 = "events";
 function useEvents() {
   const tick = useWorkerTick();
   const query = useQuery({
-    queryKey: [`${QUERY_KEY$1}/${tick}`],
+    queryKey: [`${QUERY_KEY$2}/${tick}`],
     queryFn: async () => {
       const events = await fetchWorker("get", "events");
       events.sort((a, b2) => b2.timestamp - a.timestamp);
@@ -32416,26 +32422,34 @@ function useIsSubscribed() {
   });
   return query.data ?? false;
 }
-const initGranted = "Notification" in window && Notification.permission == "granted";
 const initError = "Notification" in window ? Notification.permission == "denied" ? "Notifications previously denied" : "" : "Notification API not available";
+const QUERY_KEY$1 = "notificationsGranted";
 function useNotificationPermission() {
-  const [granted, setGranted] = reactExports.useState(initGranted);
+  const client2 = useQueryClient();
   const [error, setError] = reactExports.useState(initError);
+  const query = useQuery({
+    queryKey: [QUERY_KEY$1],
+    queryFn: async () => {
+      const b2 = await fetchWorker("get", "notificationsGranted");
+      return b2;
+    }
+  });
   const grant = reactExports.useCallback(() => {
     if ("Notification" in window) {
       Notification.requestPermission().then((permission) => {
         if (permission == "granted") {
-          setGranted(true);
+          client2.setQueryData([QUERY_KEY$1], () => true);
+          console.log("granted notifications");
         } else {
-          setGranted(false);
+          client2.setQueryData([QUERY_KEY$1], () => false);
           setError("User denied notifications");
         }
       });
     } else {
       setError("Notification API not available");
     }
-  }, [setGranted, setError]);
-  return [granted, grant, error];
+  }, [client2, setError]);
+  return [query.data ?? false, grant, error];
 }
 const QUERY_KEY = "privateKey";
 function usePrivateKey() {
@@ -32456,7 +32470,8 @@ function usePrivateKey() {
       client2.setQueryData([QUERY_KEY], () => key);
     }
   });
-  return [query.data ?? "", (key) => mutation.mutate(key)];
+  console.log(query.data);
+  return [query.data ?? "", mutation];
 }
 function useServiceWorker() {
   const [tick, setTick] = useWorkerTickInternal();
@@ -44272,6 +44287,18 @@ class RootPrivateKeyImpl {
   }
 }
 const ErrorMessage = /* @__PURE__ */ dt.p.withConfig({ displayName: "ErrorMessage" })(["color:red;"]);
+const spin = mt`
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+`;
+const Spinner = /* @__PURE__ */ dt.div.withConfig({ displayName: "Spinner" })(
+  ["display:block;width:40px;height:40px;position:relative;text-align:center;&:before{content:' ';display:block;margin:0 auto;width:20px;height:20px;border-radius:50%;border:3px solid #999;border-top-color:#e5e5e5;animation:", " 1s ease-in-out infinite;}}"],
+  spin
+);
 function KeyInput({ onClose }) {
   const [words, setWords] = reactExports.useState(new Array(24).fill(""));
   const setPrivateKey = usePrivateKey()[1];
@@ -44283,9 +44310,15 @@ function KeyInput({ onClose }) {
     try {
       const rootPrivateKey = restoreRootPrivateKey(phrase);
       const signingKey = rootPrivateKey.deriveSpendingKey();
-      setDeviceId(Date.now());
-      setPrivateKey(bytesToHex(signingKey.bytes));
-      onClose();
+      console.log("mutating device id");
+      setDeviceId.mutate(Date.now(), {
+        onSuccess: () => {
+          console.log("mutating private key");
+          setPrivateKey.mutate(bytesToHex(signingKey.bytes), {
+            onSuccess: onClose
+          });
+        }
+      });
     } catch (e) {
       setError(e.message);
     }
@@ -44294,7 +44327,7 @@ function KeyInput({ onClose }) {
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Layout, { children: [
       /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("h2", { children: "Set Key" }, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 41,
+        lineNumber: 48,
         columnNumber: 17
       }, this),
       words.map((w2, i) => {
@@ -44303,7 +44336,7 @@ function KeyInput({ onClose }) {
         return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Group, { children: [
           /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Label, { htmlFor: id, children: id }, void 0, false, {
             fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-            lineNumber: 47,
+            lineNumber: 54,
             columnNumber: 29
           }, this),
           /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(
@@ -44324,48 +44357,59 @@ function KeyInput({ onClose }) {
             false,
             {
               fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-              lineNumber: 49,
+              lineNumber: 56,
               columnNumber: 29
             },
             this
           )
         ] }, i, true, {
           fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-          lineNumber: 46,
+          lineNumber: 53,
           columnNumber: 13
         }, this);
       })
     ] }, void 0, true, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 40,
+      lineNumber: 47,
       columnNumber: 13
     }, this),
-    /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { disabled: !isValid, onClick: handleSave, children: "Save" }, void 0, false, {
+    /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Row, { children: [
+      /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { disabled: !isValid, onClick: handleSave, children: setDeviceId.isPending || setPrivateKey.isPending ? /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Spinner, {}, void 0, false, {
+        fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
+        lineNumber: 80,
+        columnNumber: 73
+      }, this) : "Save" }, void 0, false, {
+        fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
+        lineNumber: 79,
+        columnNumber: 17
+      }, this),
+      /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { onClick: onClose, $secondary: true, children: "Cancel" }, void 0, false, {
+        fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
+        lineNumber: 83,
+        columnNumber: 17
+      }, this)
+    ] }, void 0, true, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 71,
-      columnNumber: 13
-    }, this),
-    /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { onClick: onClose, $secondary: true, children: "Cancel" }, void 0, false, {
-      fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 75,
+      lineNumber: 78,
       columnNumber: 13
     }, this),
     error && /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(ErrorMessage, { children: error }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 79,
+      lineNumber: 88,
       columnNumber: 23
     }, this)
   ] }, void 0, true, {
     fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-    lineNumber: 39,
+    lineNumber: 46,
     columnNumber: 5
   }, this);
 }
 const StyledKeyInput = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInput__StyledKeyInput" })(
-  ["align-items:center;background:", ";border-radius:5px;display:flex;flex-direction:column;padding:10px;"],
+  ["align-items:center;background:", ";border-radius:5px;display:flex;flex-direction:column;padding:10px;gap:20px;"],
   ({ theme: theme2 }) => theme2.colors.panelBg
 );
 const Layout = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInput__Layout" })(["display:flex;flex-direction:column;gap:10px;width:100%;"]);
+const Row = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInput__Row" })(["display:flex;flex-direction:row;gap:20px;"]);
 const Group = /* @__PURE__ */ dt.div.withConfig({ displayName: "KeyInput__Group" })(["align-items:center;display:flex;flex-direction:row;"]);
 const Label = /* @__PURE__ */ dt.label.withConfig({ displayName: "KeyInput__Label" })(["min-width:30px;"]);
 const Input = /* @__PURE__ */ dt.input.withConfig({ displayName: "KeyInput__Input" })(

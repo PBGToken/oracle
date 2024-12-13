@@ -5,6 +5,7 @@ import { BIP39_DICT_EN, restoreRootPrivateKey } from "@helios-lang/tx-utils"
 import { useDeviceId, usePrivateKey } from "../hooks"
 import { Button } from "./Button"
 import { ErrorMessage } from "./ErrorMessage"
+import { Spinner } from "./Spinner"
 
 type KeyInputProps = {
     onClose: () => void
@@ -26,10 +27,14 @@ export function KeyInput({ onClose }: KeyInputProps) {
             const signingKey = rootPrivateKey.deriveSpendingKey()
 
             // device Id first, because upon setting the private key secrets are immediately fetched
-            setDeviceId(Date.now())
-            setPrivateKey(bytesToHex(signingKey.bytes))
 
-            onClose()
+            setDeviceId.mutate(Date.now(), {
+                onSuccess: () => {
+                    setPrivateKey.mutate(bytesToHex(signingKey.bytes), {
+                        onSuccess: onClose
+                    })
+                }
+            })
         } catch (e) {
             setError((e as Error).message)
         }
@@ -68,13 +73,15 @@ export function KeyInput({ onClose }: KeyInputProps) {
                 })}
             </Layout>
 
-            <Button disabled={!isValid} onClick={handleSave}>
-                Save
-            </Button>
+            <Row>
+                <Button disabled={!isValid} onClick={handleSave}>
+                    {setDeviceId.isPending || setPrivateKey.isPending ? <Spinner/> : "Save"}
+                </Button>
 
-            <Button onClick={onClose} $secondary={true}>
-                Cancel
-            </Button>
+                <Button onClick={onClose} $secondary={true}>
+                    Cancel
+                </Button>
+            </Row>
 
             {error && <ErrorMessage>{error}</ErrorMessage>}
         </StyledKeyInput>
@@ -88,6 +95,7 @@ const StyledKeyInput = styled.div`
     display: flex;
     flex-direction: column;
     padding: 10px;
+    gap: 20px;
 `
 
 const Layout = styled.div`
@@ -95,6 +103,12 @@ const Layout = styled.div`
     flex-direction: column;
     gap: 10px;
     width: 100%;
+`
+
+const Row = styled.div`
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
 `
 
 const Group = styled.div`
