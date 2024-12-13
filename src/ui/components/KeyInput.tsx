@@ -31,8 +31,14 @@ export function KeyInput({ onClose }: KeyInputProps) {
             setDeviceId.mutate(Date.now(), {
                 onSuccess: () => {
                     setPrivateKey.mutate(bytesToHex(signingKey.bytes), {
-                        onSuccess: onClose
+                        onSuccess: onClose,
+                        onError: (error) => {
+                            setError(`Failed to set private key, ${error.message}`)
+                        }
                     })
+                },
+                onError: (error) => {
+                    setError(`Failed to set device id, ${error.message}`)
                 }
             })
         } catch (e) {

@@ -32422,11 +32422,10 @@ function useIsSubscribed() {
   });
   return query.data ?? false;
 }
-const initError = "Notification" in window ? Notification.permission == "denied" ? "Notifications previously denied" : "" : "Notification API not available";
 const QUERY_KEY$1 = "notificationsGranted";
 function useNotificationPermission() {
   const client2 = useQueryClient();
-  const [error, setError] = reactExports.useState(initError);
+  const [error, setError] = reactExports.useState("Notification" in window ? Notification.permission == "denied" ? "Notifications previously denied" : "" : "Notification API not available");
   const query = useQuery({
     queryKey: [QUERY_KEY$1],
     queryFn: async () => {
@@ -32439,7 +32438,7 @@ function useNotificationPermission() {
       Notification.requestPermission().then((permission) => {
         if (permission == "granted") {
           client2.setQueryData([QUERY_KEY$1], () => true);
-          console.log("granted notifications");
+          setError("");
         } else {
           client2.setQueryData([QUERY_KEY$1], () => false);
           setError("User denied notifications");
@@ -44310,13 +44309,17 @@ function KeyInput({ onClose }) {
     try {
       const rootPrivateKey = restoreRootPrivateKey(phrase);
       const signingKey = rootPrivateKey.deriveSpendingKey();
-      console.log("mutating device id");
       setDeviceId.mutate(Date.now(), {
         onSuccess: () => {
-          console.log("mutating private key");
           setPrivateKey.mutate(bytesToHex(signingKey.bytes), {
-            onSuccess: onClose
+            onSuccess: onClose,
+            onError: (error2) => {
+              setError(`Failed to set private key, ${error2.message}`);
+            }
           });
+        },
+        onError: (error2) => {
+          setError(`Failed to set device id, ${error2.message}`);
         }
       });
     } catch (e) {
@@ -44327,7 +44330,7 @@ function KeyInput({ onClose }) {
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Layout, { children: [
       /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("h2", { children: "Set Key" }, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 48,
+        lineNumber: 52,
         columnNumber: 17
       }, this),
       words.map((w2, i) => {
@@ -44336,7 +44339,7 @@ function KeyInput({ onClose }) {
         return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Group, { children: [
           /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Label, { htmlFor: id, children: id }, void 0, false, {
             fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-            lineNumber: 54,
+            lineNumber: 58,
             columnNumber: 29
           }, this),
           /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(
@@ -44357,50 +44360,50 @@ function KeyInput({ onClose }) {
             false,
             {
               fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-              lineNumber: 56,
+              lineNumber: 60,
               columnNumber: 29
             },
             this
           )
         ] }, i, true, {
           fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-          lineNumber: 53,
+          lineNumber: 57,
           columnNumber: 13
         }, this);
       })
     ] }, void 0, true, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 47,
+      lineNumber: 51,
       columnNumber: 13
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Row, { children: [
       /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { disabled: !isValid, onClick: handleSave, children: setDeviceId.isPending || setPrivateKey.isPending ? /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Spinner, {}, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 80,
+        lineNumber: 84,
         columnNumber: 73
       }, this) : "Save" }, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 79,
+        lineNumber: 83,
         columnNumber: 17
       }, this),
       /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { onClick: onClose, $secondary: true, children: "Cancel" }, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 83,
+        lineNumber: 87,
         columnNumber: 17
       }, this)
     ] }, void 0, true, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 78,
+      lineNumber: 82,
       columnNumber: 13
     }, this),
     error && /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(ErrorMessage, { children: error }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 88,
+      lineNumber: 92,
       columnNumber: 23
     }, this)
   ] }, void 0, true, {
     fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-    lineNumber: 46,
+    lineNumber: 50,
     columnNumber: 5
   }, this);
 }

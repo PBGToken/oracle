@@ -20635,7 +20635,6 @@ scope.addEventListener("message", (event) => {
   };
   event.waitUntil(
     (async () => {
-      console.log("receieved message", method, key);
       try {
         switch (method) {
           case "get":
