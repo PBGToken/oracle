@@ -41156,10 +41156,11 @@ function KeyInput({ onClose }) {
   const [words, setWords] = reactExports.useState(new Array(24).fill(""));
   const setPrivateKey = usePrivateKey()[1];
   const setDeviceId = useDeviceId()[1];
-  const isValid = words.every((w2) => BIP39_DICT_EN.indexOf(w2) != -1);
+  const lowerCaseWords = words.map((w2) => w2.toLowerCase());
+  const isValid = lowerCaseWords.every((w2) => BIP39_DICT_EN.indexOf(w2) != -1);
   const [error, setError] = reactExports.useState("");
   const handleSave = () => {
-    const phrase = words;
+    const phrase = lowerCaseWords;
     try {
       const rootPrivateKey = restoreRootPrivateKey(phrase);
       const signingKey = rootPrivateKey.deriveSpendingKey();
@@ -41184,16 +41185,16 @@ function KeyInput({ onClose }) {
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Layout, { children: [
       /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV("h2", { children: "Set Key" }, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 52,
+        lineNumber: 53,
         columnNumber: 17
       }, this),
       words.map((w2, i) => {
         const id = (i + 1).toString();
-        const isValid2 = BIP39_DICT_EN.indexOf(w2) != -1;
+        const isValid2 = BIP39_DICT_EN.indexOf(w2.toLowerCase()) != -1;
         return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Group, { children: [
           /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Label, { htmlFor: id, children: id }, void 0, false, {
             fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-            lineNumber: 58,
+            lineNumber: 59,
             columnNumber: 29
           }, this),
           /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(
@@ -41214,50 +41215,50 @@ function KeyInput({ onClose }) {
             false,
             {
               fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-              lineNumber: 60,
+              lineNumber: 61,
               columnNumber: 29
             },
             this
           )
         ] }, i, true, {
           fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-          lineNumber: 57,
+          lineNumber: 58,
           columnNumber: 13
         }, this);
       })
     ] }, void 0, true, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 51,
+      lineNumber: 52,
       columnNumber: 13
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(ErrorMessage, { children: error }, void 0, false, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 82,
+      lineNumber: 83,
       columnNumber: 13
     }, this),
     /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Row, { children: [
       /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { disabled: !isValid, onClick: handleSave, children: setDeviceId.isPending || setPrivateKey.isPending ? /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Spinner, {}, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 86,
+        lineNumber: 87,
         columnNumber: 73
       }, this) : "Save" }, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 85,
+        lineNumber: 86,
         columnNumber: 17
       }, this),
       /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Button, { onClick: onClose, $secondary: true, children: "Cancel" }, void 0, false, {
         fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-        lineNumber: 89,
+        lineNumber: 90,
         columnNumber: 17
       }, this)
     ] }, void 0, true, {
       fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-      lineNumber: 84,
+      lineNumber: 85,
       columnNumber: 13
     }, this)
   ] }, void 0, true, {
     fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
-    lineNumber: 50,
+    lineNumber: 51,
     columnNumber: 5
   }, this);
 }
