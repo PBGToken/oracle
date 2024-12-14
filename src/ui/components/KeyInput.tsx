@@ -15,11 +15,12 @@ export function KeyInput({ onClose }: KeyInputProps) {
     const [words, setWords] = useState<string[]>(new Array(24).fill(""))
     const setPrivateKey = usePrivateKey()[1]
     const setDeviceId = useDeviceId()[1]
-    const isValid = words.every((w) => BIP39_DICT_EN.indexOf(w) != -1)
+    const cleanWords = words.map(w => w.toLowerCase().trim())
+    const isValid = cleanWords.every((w) => BIP39_DICT_EN.indexOf(w) != -1)
     const [error, setError] = useState("")
 
     const handleSave = () => {
-        const phrase = words
+        const phrase = cleanWords
 
         try {
             const rootPrivateKey = restoreRootPrivateKey(phrase)
@@ -52,7 +53,7 @@ export function KeyInput({ onClose }: KeyInputProps) {
                 <h2>Set Key</h2>
                 {words.map((w, i) => {
                     const id = (i + 1).toString()
-                    const isValid = BIP39_DICT_EN.indexOf(w) != -1
+                    const isValid = BIP39_DICT_EN.indexOf(cleanWords[i]) != -1
                     return (
                         <Group key={i}>
                             <Label htmlFor={id}>{id}</Label>

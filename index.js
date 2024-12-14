@@ -41156,11 +41156,11 @@ function KeyInput({ onClose }) {
   const [words, setWords] = reactExports.useState(new Array(24).fill(""));
   const setPrivateKey = usePrivateKey()[1];
   const setDeviceId = useDeviceId()[1];
-  const lowerCaseWords = words.map((w2) => w2.toLowerCase());
-  const isValid = lowerCaseWords.every((w2) => BIP39_DICT_EN.indexOf(w2) != -1);
+  const cleanWords = words.map((w2) => w2.toLowerCase().trim());
+  const isValid = cleanWords.every((w2) => BIP39_DICT_EN.indexOf(w2) != -1);
   const [error, setError] = reactExports.useState("");
   const handleSave = () => {
-    const phrase = lowerCaseWords;
+    const phrase = cleanWords;
     try {
       const rootPrivateKey = restoreRootPrivateKey(phrase);
       const signingKey = rootPrivateKey.deriveSpendingKey();
@@ -41190,7 +41190,7 @@ function KeyInput({ onClose }) {
       }, this),
       words.map((w2, i) => {
         const id = (i + 1).toString();
-        const isValid2 = BIP39_DICT_EN.indexOf(w2.toLowerCase()) != -1;
+        const isValid2 = BIP39_DICT_EN.indexOf(cleanWords[i]) != -1;
         return /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Group, { children: [
           /* @__PURE__ */ jsxDevRuntimeExports.jsxDEV(Label, { htmlFor: id, children: id }, void 0, false, {
             fileName: "/home/christian/Src/PBG/multi-sig-oracle-client/src/ui/components/KeyInput.tsx",
