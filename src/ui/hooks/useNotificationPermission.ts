@@ -1,8 +1,6 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
-import { fetchWorker } from "./fetchWorker"
-
-    
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { fetchWorker } from "./useServiceWorker"
 
 const QUERY_KEY = "notificationsGranted"
 

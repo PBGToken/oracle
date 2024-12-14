@@ -79,6 +79,8 @@ export function KeyInput({ onClose }: KeyInputProps) {
                 })}
             </Layout>
 
+            <ErrorMessage>{error}</ErrorMessage>
+
             <Row>
                 <Button disabled={!isValid} onClick={handleSave}>
                     {setDeviceId.isPending || setPrivateKey.isPending ? <Spinner/> : "Save"}
@@ -87,9 +89,7 @@ export function KeyInput({ onClose }: KeyInputProps) {
                 <Button onClick={onClose} $secondary={true}>
                     Cancel
                 </Button>
-            </Row>
-
-            {error && <ErrorMessage>{error}</ErrorMessage>}
+            </Row>            
         </StyledKeyInput>
     )
 }

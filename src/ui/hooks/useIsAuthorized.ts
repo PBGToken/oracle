@@ -1,12 +1,12 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchWorker } from "./fetchWorker";
-import { useWorkerTick } from "./useWorkerTick";
+import { useQuery } from "@tanstack/react-query"
+import { fetchWorker } from "./useServiceWorker"
+
+const QUERY_KEY = "isAuthorized"
 
 export function useIsAuthorized(): boolean {
-    const tick = useWorkerTick()
-
     const query = useQuery({
-        queryKey: [`isAuthorized/${tick}`],
+        queryKey: [QUERY_KEY],
+        refetchInterval: 1000,
         queryFn: async () => {
             const b: boolean = await fetchWorker("get", "isAuthorized")
 

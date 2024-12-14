@@ -1,5 +1,5 @@
 import { useMutation, UseMutationResult, useQuery, useQueryClient } from "@tanstack/react-query"
-import { fetchWorker } from "./fetchWorker"
+import { fetchWorker } from "./useServiceWorker"
 
 const QUERY_KEY = "deviceId"
 

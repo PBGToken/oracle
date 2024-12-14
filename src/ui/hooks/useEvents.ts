@@ -1,15 +1,13 @@
 import { useQuery } from "@tanstack/react-query"
 import { type FeedEvent } from "../../worker/FeedEvent"
-import { fetchWorker } from "./fetchWorker"
-import { useWorkerTick } from "./useWorkerTick"
+import { fetchWorker } from "./useServiceWorker"
 
 const QUERY_KEY = "events"
 
 export function useEvents(): FeedEvent[] {
-    const tick = useWorkerTick()
-
     const query = useQuery({
-        queryKey: [`${QUERY_KEY}/${tick}`],
+        queryKey: [QUERY_KEY],
+        refetchInterval: 5000,
         queryFn: async () => {
             const events:  FeedEvent[] = await fetchWorker("get", "events")
 

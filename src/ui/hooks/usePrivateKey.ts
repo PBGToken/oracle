@@ -1,5 +1,5 @@
 import { useMutation, UseMutationResult, useQuery, useQueryClient } from "@tanstack/react-query"
-import { fetchWorker } from "./fetchWorker"
+import { fetchWorker } from "./useServiceWorker"
 
 const QUERY_KEY = "privateKey"
 
@@ -24,8 +24,6 @@ export function usePrivateKey(): [string, UseMutationResult<void, Error, string,
             client.setQueryData([QUERY_KEY], () => key)
         }
     })
-
-    console.log(query.data)
 
     return [query.data ?? "", mutation]
 }

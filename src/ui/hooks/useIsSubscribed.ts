@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import { fetchWorker } from "./fetchWorker";
-import { useWorkerTick } from "./useWorkerTick";
+import { fetchWorker } from "./useServiceWorker";
+
+const QUERY_KEY = "isSubscribed"
 
 export function useIsSubscribed(): boolean {
-    const tick = useWorkerTick()
-
     const query = useQuery({
-        queryKey: [`isSubscribed/${tick}`],
+        queryKey: [QUERY_KEY],
+        refetchInterval: 1000,
         queryFn: async () => {
             const b: boolean = await fetchWorker("get", "isSubscribed")
 

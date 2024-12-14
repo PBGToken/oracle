@@ -12,18 +12,15 @@ import { scope } from "./scope"
 
 
 scope.addEventListener("activate", (event: ExtendableEvent) => {
-    console.log("Service Worker activated")
+    event.waitUntil(Promise.all([authorizeAndSubscribe(), scope.clients.claim()]))
 
-    // use this event to 
-    event.waitUntil(authorizeAndSubscribe())
+    console.log("Service Worker activated")
 })
 
 scope.addEventListener("install", (event: ExtendableEvent) => {
+    event.waitUntil(Promise.all([openDatabase(), scope.skipWaiting()]))
+
     console.log("Service Worker installed")
-
-    event.waitUntil(openDatabase())
-
-    scope.skipWaiting()
 })
 
 scope.addEventListener("message", (event: ExtendableMessageEvent) => {
@@ -61,6 +58,9 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                                 break
                             case "privateKey":
                                 handleSuccess(await getPrivateKey())
+                                break
+                            case "status":
+                                handleSuccess("active")
                                 break
                             default:
                                 handleError(`invalid key "${key}"`)

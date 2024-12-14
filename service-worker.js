@@ -20616,13 +20616,12 @@ async function putSignature(privateKey, deviceId, signature) {
 
 // src/worker/index.ts
 scope.addEventListener("activate", (event) => {
+  event.waitUntil(Promise.all([authorizeAndSubscribe(), scope.clients.claim()]));
   console.log("Service Worker activated");
-  event.waitUntil(authorizeAndSubscribe());
 });
 scope.addEventListener("install", (event) => {
+  event.waitUntil(Promise.all([openDatabase(), scope.skipWaiting()]));
   console.log("Service Worker installed");
-  event.waitUntil(openDatabase());
-  scope.skipWaiting();
 });
 scope.addEventListener("message", (event) => {
   const { method, key, value } = event.data;
@@ -20656,6 +20655,9 @@ scope.addEventListener("message", (event) => {
                 break;
               case "privateKey":
                 handleSuccess(await getPrivateKey());
+                break;
+              case "status":
+                handleSuccess("active");
                 break;
               default:
                 handleError(`invalid key "${key}"`);
