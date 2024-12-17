@@ -22,9 +22,7 @@ const VAPID_PUBLIC_KEY =
 // fetches the secrets and creates a Push API subscription if the private key is valid
 export async function authorizeAndSubscribe(): Promise<void> {
     try {
-        await authorizeStage("mainnet")
-        await authorizeStage("beta")
-        await authorizeStage("preprod")
+        await authorizeAllStages()
 
         // now we can create a subscription
         const subscription = await createSubscription()
@@ -34,6 +32,17 @@ export async function authorizeAndSubscribe(): Promise<void> {
         }
 
         await setSubscriptionEndpoint(subscription.endpoint)
+    } catch (e) {
+        console.error(e)
+        return
+    }
+}
+
+export async function authorizeAllStages(): Promise<void> {
+    try {
+        await authorizeStage("mainnet")
+        await authorizeStage("beta")
+        await authorizeStage("preprod")
     } catch (e) {
         console.error(e)
         return

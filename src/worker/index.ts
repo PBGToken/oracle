@@ -1,4 +1,4 @@
-import { authorizeAndSubscribe, isAuthorized, isSubscribed } from "./auth"
+import { authorizeAllStages, authorizeAndSubscribe, isAuthorized, isSubscribed } from "./auth"
 import {
     getDeviceId,
     getPrivateKey,
@@ -63,6 +63,10 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                             case "status":
                                 handleSuccess("active")
                                 break
+                            case "sync":
+                                await sync()
+                                handleSuccess("ok")
+                                break
                             default:
                                 handleError(`invalid key "${key}"`)
                         }
@@ -106,6 +110,38 @@ scope.addEventListener("push", (event: PushEvent) => {
     event.waitUntil(signFeed(options))
 })
 
+//self.addEventListener("pushsubscriptionchange", async (event: Event) => {
+//    console.log('Push subscription change detected:', event);
+//  
+//    try {
+//      // Re-subscribe to the Push Service
+//      const applicationServerKey = '<YOUR_APPLICATION_SERVER_PUBLIC_KEY>'; // VAPID Public Key
+//      const newSubscription = await scope.registration.pushManager.subscribe({
+//        userVisibleOnly: true,
+//        applicationServerKey: urlBase64ToUint8Array(applicationServerKey),
+//      });
+//  
+//      console.log('New subscription:', JSON.stringify(newSubscription));
+//  
+//      // Send the new subscription to your backend
+//      await fetch('/api/update-subscription', {
+//        method: 'POST',
+//        headers: { 'Content-Type': 'application/json' },
+//        body: JSON.stringify(newSubscription),
+//      });
+//  
+//      console.log('Subscription updated successfully.');
+//    } catch (error) {
+//      console.error('Failed to update subscription:', error);
+//    }
+//  });
+
 function getNotificationsGranted(): boolean {
     return "Notification" in self && Notification.permission == "granted"
 }
+
+// this function is triggered when the page reloads
+async function sync(): Promise<void> {
+    // we have to make sure we are still authorized
+    await authorizeAllStages()
+}   

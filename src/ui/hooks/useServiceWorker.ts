@@ -18,15 +18,29 @@ if ("serviceWorker" in navigator && "PushManager" in window) {
         .then(async () => {
             console.log("Service Worker registered")
 
+            
             while (!navigator.serviceWorker.controller) {
                 await new Promise((resolve) => setTimeout(resolve, 500))
             }
 
+            const controller = navigator.serviceWorker.controller
+
+            // start by updating
+            console.log("Syncing service worker")
+            await new Promise((resolve, reject) => fetchInternal(
+                controller,
+                "get",
+                "sync",
+                undefined,
+                resolve,
+                reject
+            ))
+        
             let pendingMessage = pendingMessages.shift()
 
             while (pendingMessage) {
                 fetchInternal(
-                    navigator.serviceWorker.controller,
+                    controller,
                     pendingMessage.method,
                     pendingMessage.key,
                     pendingMessage.value,

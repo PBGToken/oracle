@@ -15,7 +15,7 @@ export async function fetchSecrets(
     privateKey: string,
     deviceId: number
 ): Promise<Secrets | undefined> {
-    const baseUrl = stages[stage]
+    const baseUrl = stages[stage].baseUrl
 
     const response = await fetch(`${baseUrl}/secrets`, {
         method: "GET",
