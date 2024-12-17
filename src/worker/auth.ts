@@ -3,13 +3,13 @@ import {
     getDeviceId,
     getPrivateKey,
     getSecrets,
-    getSubscriptionEndpoint,
+    getSubscription,
     setSecrets,
-    setSubscriptionEndpoint
+    setSubscription
 } from "./db"
 import { scope } from "./scope"
 import { createAuthToken, fetchSecrets } from "./Secrets"
-import { STAGE_NAMES, StageName } from "./stages"
+import { STAGE_NAMES, StageName, stages } from "./stages"
 
 const VAPID_BASE64_CODEC = makeBase64({
     alphabet:
@@ -25,13 +25,7 @@ export async function authorizeAndSubscribe(): Promise<void> {
         await authorizeAllStages()
 
         // now we can create a subscription
-        const subscription = await createSubscription()
-
-        if (!subscription) {
-            return
-        }
-
-        await setSubscriptionEndpoint(subscription.endpoint)
+        await createSubscription()
     } catch (e) {
         console.error(e)
         return
@@ -87,10 +81,29 @@ export async function isAuthorized(): Promise<string[]> {
 }
 
 export async function isSubscribed(): Promise<boolean> {
-    return (await getSubscriptionEndpoint()) != ""
+    return (await getSubscription()) != undefined
 }
 
-async function createSubscription(): Promise<PushSubscription | undefined> {
+export async function createSubscription(): Promise<void> {
+    try {
+        const subscriptionObj = await scope.registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: new Uint8Array(
+                VAPID_BASE64_CODEC.decode(VAPID_PUBLIC_KEY)
+            )
+        })
+
+        const subscription = JSON.stringify(subscriptionObj.toJSON())
+
+        await setSubscription(subscription)
+
+        await syncSubscription(subscription)
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+export async function syncSubscription(subscription: string) {
     try {
         const privateKey = await getPrivateKey()
 
@@ -100,32 +113,26 @@ async function createSubscription(): Promise<PushSubscription | undefined> {
 
         const deviceId = await getDeviceId()
 
-        const subscription = await scope.registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: new Uint8Array(
-                VAPID_BASE64_CODEC.decode(VAPID_PUBLIC_KEY)
+        for (let stageName of STAGE_NAMES) {
+            const baseUrl = stages[stageName].baseUrl
+
+            const response = await fetch(
+                `${baseUrl}/subscribe`,
+                {
+                    method: "POST",
+                    mode: "cors",
+                    headers: {
+                        Authorization: createAuthToken(privateKey, deviceId)
+                    },
+                    body: subscription
+                }
             )
-        })
 
-        const response = await fetch(
-            `https://api.oracle.token.pbg.io/subscribe`,
-            {
-                method: "POST",
-                mode: "cors",
-                headers: {
-                    Authorization: createAuthToken(privateKey, deviceId)
-                },
-                body: JSON.stringify(subscription)
+            if (!response.ok) {
+                console.log(`Failed to subscribe to ${stageName} push notifications: ${response.statusText}`)   
             }
-        )
-
-        if (response.status >= 200 && response.status < 300) {
-            return subscription
-        } else {
-            return undefined
         }
-    } catch (e) {
+    } catch(e) {
         console.error(e)
-        return undefined
     }
 }

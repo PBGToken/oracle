@@ -92,13 +92,12 @@ export function setSecrets(
     return setConfig(`secrets/${stage}`, secrets)
 }
 
-// empty string is equivalent to not subscribed
-export function getSubscriptionEndpoint(): Promise<string> {
-    return getConfig("subscriptionEndpoint", "")
+export function getSubscription(): Promise<string | undefined> {
+    return getConfig("subscription", undefined)
 }
 
-export function setSubscriptionEndpoint(endpoint: string): Promise<void> {
-    return setConfig("subscriptionEndpoint", endpoint)
+export function setSubscription(subscription: string): Promise<void> {
+    return setConfig("subscription", subscription)
 }
 
 async function getConfig<T>(key: string, def: T): Promise<T> {

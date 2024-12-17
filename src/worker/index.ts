@@ -1,7 +1,8 @@
-import { authorizeAllStages, authorizeAndSubscribe, isAuthorized, isSubscribed } from "./auth"
+import { authorizeAllStages, authorizeAndSubscribe, createSubscription, isAuthorized, isSubscribed, syncSubscription } from "./auth"
 import {
     getDeviceId,
     getPrivateKey,
+    getSubscription,
     listEvents,
     openDatabase,
     setDeviceId,
@@ -110,31 +111,9 @@ scope.addEventListener("push", (event: PushEvent) => {
     event.waitUntil(signFeed(options))
 })
 
-//self.addEventListener("pushsubscriptionchange", async (event: Event) => {
-//    console.log('Push subscription change detected:', event);
-//  
-//    try {
-//      // Re-subscribe to the Push Service
-//      const applicationServerKey = '<YOUR_APPLICATION_SERVER_PUBLIC_KEY>'; // VAPID Public Key
-//      const newSubscription = await scope.registration.pushManager.subscribe({
-//        userVisibleOnly: true,
-//        applicationServerKey: urlBase64ToUint8Array(applicationServerKey),
-//      });
-//  
-//      console.log('New subscription:', JSON.stringify(newSubscription));
-//  
-//      // Send the new subscription to your backend
-//      await fetch('/api/update-subscription', {
-//        method: 'POST',
-//        headers: { 'Content-Type': 'application/json' },
-//        body: JSON.stringify(newSubscription),
-//      });
-//  
-//      console.log('Subscription updated successfully.');
-//    } catch (error) {
-//      console.error('Failed to update subscription:', error);
-//    }
-//  });
+scope.addEventListener("pushsubscriptionchange", async (_event: Event) => {
+    await createSubscription()
+})
 
 function getNotificationsGranted(): boolean {
     return "Notification" in self && Notification.permission == "granted"
@@ -144,4 +123,34 @@ function getNotificationsGranted(): boolean {
 async function sync(): Promise<void> {
     // we have to make sure we are still authorized
     await authorizeAllStages()
+
+    let subscription = await getSubscription()
+
+    if (subscription && await isValidSubscription(subscription)) {
+        await syncSubscription(subscription)
+    } else {
+        await createSubscription()
+    }
 }   
+
+async function isValidSubscription(subscription: string): Promise<boolean> {
+    try {
+        const obj = JSON.parse(subscription) as PushSubscriptionJSON
+
+        if (!obj.endpoint) {
+            return false
+        }
+
+        if (obj.expirationTime != null && obj.expirationTime < Date.now()) {
+            return false
+        }
+
+        if (!obj.keys) {
+            return false
+        }
+
+        return true
+    } catch(_e) {
+        return false
+    }
+}
