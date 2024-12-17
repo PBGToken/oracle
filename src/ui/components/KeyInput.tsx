@@ -15,7 +15,7 @@ export function KeyInput({ onClose }: KeyInputProps) {
     const [words, setWords] = useState<string[]>(new Array(24).fill(""))
     const setPrivateKey = usePrivateKey()[1]
     const setDeviceId = useDeviceId()[1]
-    const cleanWords = words.map(w => w.toLowerCase().trim())
+    const cleanWords = words.map((w) => w.toLowerCase().trim())
     const isValid = cleanWords.every((w) => BIP39_DICT_EN.indexOf(w) != -1)
     const [error, setError] = useState("")
 
@@ -34,7 +34,9 @@ export function KeyInput({ onClose }: KeyInputProps) {
                     setPrivateKey.mutate(bytesToHex(signingKey.bytes), {
                         onSuccess: onClose,
                         onError: (error) => {
-                            setError(`Failed to set private key, ${error.message}`)
+                            setError(
+                                `Failed to set private key, ${error.message}`
+                            )
                         }
                     })
                 },
@@ -84,13 +86,17 @@ export function KeyInput({ onClose }: KeyInputProps) {
 
             <Row>
                 <Button disabled={!isValid} onClick={handleSave}>
-                    {setDeviceId.isPending || setPrivateKey.isPending ? <Spinner/> : "Save"}
+                    {setDeviceId.isPending || setPrivateKey.isPending ? (
+                        <Spinner />
+                    ) : (
+                        "Save"
+                    )}
                 </Button>
 
                 <Button onClick={onClose} $secondary={true}>
                     Cancel
                 </Button>
-            </Row>            
+            </Row>
         </StyledKeyInput>
     )
 }
@@ -138,5 +144,10 @@ const Input = styled.input<InputProps>`
     height: 50px;
     padding: 0px 10px;
     font-size: 20px;
-    border: ${({$isError, $isValid}) => $isError ? "2px solid red" : $isValid ? "2px solid green" : "2px solid #d0d0d0"};
+    border: ${({ $isError, $isValid }) =>
+        $isError
+            ? "2px solid red"
+            : $isValid
+              ? "2px solid green"
+              : "2px solid #d0d0d0"};
 `

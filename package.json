@@ -37,6 +37,7 @@
         "react-use-websocket": "^4.11.1",
         "styled-components": "^6.1.13",
         "typescript": "^5.7.2",
-        "vite": "^6.0.2"
+        "vite": "^6.0.2",
+        "vite-plugin-static-copy": "^2.2.0"
     }
 }

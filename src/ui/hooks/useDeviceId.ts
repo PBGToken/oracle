@@ -1,9 +1,17 @@
-import { useMutation, UseMutationResult, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+    useMutation,
+    UseMutationResult,
+    useQuery,
+    useQueryClient
+} from "@tanstack/react-query"
 import { fetchWorker } from "./useServiceWorker"
 
 const QUERY_KEY = "deviceId"
 
-export function useDeviceId(): [number, UseMutationResult<void, Error, number>] {
+export function useDeviceId(): [
+    number,
+    UseMutationResult<void, Error, number>
+] {
     const client = useQueryClient()
 
     const query = useQuery({

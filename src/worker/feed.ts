@@ -2,10 +2,9 @@ import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils"
 import { type Tx, type Signature, decodeTx } from "@helios-lang/ledger"
 import { makeBip32PrivateKey } from "@helios-lang/tx-utils"
 import { type FeedEvent } from "./FeedEvent"
-import { createAuthToken } from "./auth"
-import { notifyPageOfChange } from "./change"
 import { appendEvent, getDeviceId, getPrivateKey } from "./db"
 import { scope } from "./scope"
+import { createAuthToken } from "./Secrets"
 
 type NotificationOptions = {
     body: string
@@ -21,7 +20,7 @@ export async function signFeed(options: NotificationOptions): Promise<void> {
 
     if (tx) {
         // sign it
-        const pk = makeBip32PrivateKey(hexToBytes(privateKey)) 
+        const pk = makeBip32PrivateKey(hexToBytes(privateKey))
 
         const id = tx.body.hash()
 
@@ -39,8 +38,6 @@ export async function signFeed(options: NotificationOptions): Promise<void> {
 
         await appendEvent(event)
 
-        await notifyPageOfChange()
-
         await scope.registration.showNotification("Signed price feed tx", {
             ...options,
             body: bytesToHex(id)
@@ -48,20 +45,21 @@ export async function signFeed(options: NotificationOptions): Promise<void> {
     } else {
         await scope.registration.showNotification("Missing tx", {
             ...options
-        }) 
+        })
     }
 }
 
-async function fetchPriceFeed(privateKey: string, deviceId: number): Promise<Tx | undefined> {
+async function fetchPriceFeed(
+    privateKey: string,
+    deviceId: number
+): Promise<Tx | undefined> {
     try {
         const response = await fetch(`https://api.oracle.token.pbg.io/feed`, {
             method: "GET",
             mode: "cors",
             headers: {
-                Authorization: createAuthToken(
-                    privateKey, deviceId
-                )
-            }            
+                Authorization: createAuthToken(privateKey, deviceId)
+            }
         })
 
         if (response.status >= 200 && response.status < 300) {
@@ -76,25 +74,27 @@ async function fetchPriceFeed(privateKey: string, deviceId: number): Promise<Tx 
         } else {
             return undefined
         }
-    } catch(e) {
+    } catch (e) {
         console.error(e)
         return undefined
     }
 }
 
-async function putSignature(privateKey: string, deviceId: number, signature: Signature): Promise<void> {
+async function putSignature(
+    privateKey: string,
+    deviceId: number,
+    signature: Signature
+): Promise<void> {
     try {
         await fetch(`https://api.oracle.token.pbg.io/feed`, {
             method: "POST",
             mode: "cors",
             headers: {
-                Authorization: createAuthToken(
-                    privateKey, deviceId
-                )
+                Authorization: createAuthToken(privateKey, deviceId)
             },
             body: bytesToHex(signature.toCbor())
         })
-    } catch(e) {
+    } catch (e) {
         console.error(e)
     }
 }

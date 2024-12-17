@@ -5,7 +5,7 @@ type FeedItemProps = {
     event: FeedEvent
 }
 
-export function FeedItem({event}: FeedItemProps) {
+export function FeedItem({ event }: FeedItemProps) {
     return (
         <StyledFeedItem>
             <p>{event.hash}</p>

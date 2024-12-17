@@ -18,7 +18,10 @@ export function MainPage() {
                 <KeyInput onClose={() => setShowKeyInput(false)} />
             ) : (
                 <>
-                    <StatusPanel serviceWorkerStatus={serviceWorkerStatus} onChangeKey={() => setShowKeyInput(true)} />
+                    <StatusPanel
+                        serviceWorkerStatus={serviceWorkerStatus}
+                        onChangeKey={() => setShowKeyInput(true)}
+                    />
 
                     <FeedPanel />
                 </>

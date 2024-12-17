@@ -1,5 +1,10 @@
 import styled from "styled-components"
-import { useIsAuthorized, useIsSubscribed, useNotificationPermission, usePrivateKey } from "../hooks"
+import {
+    useIsAuthorized,
+    useIsSubscribed,
+    useNotificationPermission,
+    usePrivateKey
+} from "../hooks"
 import { makeBip32PrivateKey } from "@helios-lang/tx-utils"
 import { hexToBytes } from "@helios-lang/codec-utils"
 import { Button } from "./Button"
@@ -14,7 +19,7 @@ type StatusProps = {
 
 export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
     const [privateKey] = usePrivateKey()
-    const isAuthorized = useIsAuthorized()
+
     const isSubscribed = useIsSubscribed()
     const [granted, grant, error] = useNotificationPermission()
 
@@ -30,14 +35,31 @@ export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
         <StyledStatusPanel>
             <h2>Status</h2>
             <p>Service worker: {serviceWorkerStatus}</p>
-            <p>{granted ? "Notification permission granted" : "Notification permission not granted"}</p>
+            <p>
+                {granted
+                    ? "Notification permission granted"
+                    : "Notification permission not granted"}
+            </p>
             {!granted && <Button onClick={grant}>Enable Notifications</Button>}
             {error && <ErrorMessage>{error}</ErrorMessage>}
             <p>Key: {pubKeyHash == "" ? "unset" : pubKeyHash}</p>
-            <p>{isAuthorized ? "Authorized" : "Not authorized"}</p>
+            <IsAuthorized />
             <p>{isSubscribed ? "Subscribed" : "Not subscribed"}</p>
-            <Button onClick={onChangeKey}>{privateKey == "" ? "Set Key" : "Change Key"}</Button>
+            <Button onClick={onChangeKey}>
+                {privateKey == "" ? "Set Key" : "Change Key"}
+            </Button>
         </StyledStatusPanel>
+    )
+}
+
+function IsAuthorized() {
+    const isAuthorized = useIsAuthorized()
+
+    return (
+        <p>
+            Authorized:{" "}
+            {isAuthorized.length == 0 ? "none" : isAuthorized.join(", ")}
+        </p>
     )
 }
 

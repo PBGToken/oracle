@@ -1,27 +1,49 @@
-import { encodeBytes, encodeInt, encodeTuple } from "@helios-lang/cbor"
-import { bytesToHex, hexToBytes, makeBase64 } from "@helios-lang/codec-utils"
-import { makeBip32PrivateKey } from "@helios-lang/tx-utils"
-import { notifyPageOfChange } from "./change"
-import { getDeviceId, getPrivateKey } from "./db"
+import { makeBase64 } from "@helios-lang/codec-utils"
+import {
+    getDeviceId,
+    getPrivateKey,
+    getSecrets,
+    getSubscriptionEndpoint,
+    setSecrets,
+    setSubscriptionEndpoint
+} from "./db"
 import { scope } from "./scope"
+import { createAuthToken, fetchSecrets } from "./Secrets"
+import { STAGE_NAMES, StageName } from "./stages"
 
-const VAPID_BASE64_CODEC = makeBase64({alphabet: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_", padChar: "="})
+const VAPID_BASE64_CODEC = makeBase64({
+    alphabet:
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
+    padChar: "="
+})
 const VAPID_PUBLIC_KEY =
     "BD-RNoqSQfw06BlHF0I8v4YKcRrSrcQtTPGRKYQzISkLtcJ0XFfjZ_IPA8xJwsjeKx2WL183jdWQig-6fnPXT30"
-
-// api keys needed to be able check prices
-type Secrets = {
-    blockfrostApiKey: string
-}
-
-let SECRETS: Secrets | undefined = undefined
-let SUBSCRIPTION: PushSubscription | undefined = undefined
 
 // fetches the secrets and creates a Push API subscription if the private key is valid
 export async function authorizeAndSubscribe(): Promise<void> {
     try {
-        // reset SECRETS
-        SECRETS = undefined
+        await authorizeStage("mainnet")
+        await authorizeStage("beta")
+        await authorizeStage("preprod")
+
+        // now we can create a subscription
+        const subscription = await createSubscription()
+
+        if (!subscription) {
+            return
+        }
+
+        await setSubscriptionEndpoint(subscription.endpoint)
+    } catch (e) {
+        console.error(e)
+        return
+    }
+}
+
+async function authorizeStage(stage: StageName): Promise<void> {
+    try {
+        // TODO: we can be authorized for multiple stages, but will only have one push notification subscription, so split this function in two parts
+        await setSecrets(stage, undefined)
 
         const privateKey = await getPrivateKey()
 
@@ -31,101 +53,69 @@ export async function authorizeAndSubscribe(): Promise<void> {
 
         const deviceId = await getDeviceId()
 
-        const secrets = await fetchSecrets(privateKey, deviceId)
+        const secrets = await fetchSecrets(stage, privateKey, deviceId)
 
         if (!secrets) {
             return
         }
-        
-        SECRETS = secrets
 
-        // now we can create a subscription
-        const subscription = await createSubscription(privateKey, deviceId)
-
-        if (!subscription) {
-            return
-        }
-
-        SUBSCRIPTION = subscription
+        await setSecrets(stage, secrets)
     } catch (e) {
         console.error(e)
         return
-    } finally {
-        await notifyPageOfChange()
     }
 }
 
-export function isAuthorized(): boolean {
-    return SECRETS !== undefined
-}
+export async function isAuthorized(): Promise<string[]> {
+    const authorizedStages: string[] = []
 
-export function isSubscribed(): boolean {
-    return SUBSCRIPTION !== undefined
-}
-
-// copy this method to the github repo
-export function createAuthToken(
-    privateKey: string,
-    deviceId: number
-): string {
-    const nonce = Date.now() + Math.floor(Math.random() * 1000)
-
-    const message = encodeTuple([encodeInt(nonce), encodeInt(deviceId)])
-
-    const signature = makeBip32PrivateKey(hexToBytes(privateKey)).sign(message)
-
-    const payload = encodeTuple([encodeBytes(message), signature])
-
-    const payloadHex = bytesToHex(payload)
-
-    return payloadHex
-}
-
-// undefined return value signifies unauthorized
-async function fetchSecrets(privateKey: string, deviceId: number): Promise<Secrets | undefined> {
-    const response = await fetch(
-        `https://api.oracle.token.pbg.io/secrets`,
-        {
-            method: "GET",
-            mode: "cors",
-            headers: {
-                Authorization: createAuthToken(
-                    privateKey,
-                    deviceId
-                )
-            }
+    for (let stage of STAGE_NAMES)
+        if ((await getSecrets(stage)) != undefined) {
+            authorizedStages.push(stage)
         }
-    )
 
-    const data = await response.text()
-
-    return JSON.parse(data) as Secrets // TODO: type-safe
+    return authorizedStages
 }
 
-async function createSubscription(privateKey: string, deviceId: number): Promise<PushSubscription | undefined> {
+export async function isSubscribed(): Promise<boolean> {
+    return (await getSubscriptionEndpoint()) != ""
+}
+
+async function createSubscription(): Promise<PushSubscription | undefined> {
     try {
+        const privateKey = await getPrivateKey()
+
+        if (privateKey == "") {
+            return
+        }
+
+        const deviceId = await getDeviceId()
+
         const subscription = await scope.registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: new Uint8Array(VAPID_BASE64_CODEC.decode(VAPID_PUBLIC_KEY))
+            applicationServerKey: new Uint8Array(
+                VAPID_BASE64_CODEC.decode(VAPID_PUBLIC_KEY)
+            )
         })
 
-        const response = await fetch(`https://api.oracle.token.pbg.io/subscribe`, {
-            method: "POST",
-            mode: "cors",
-            headers: {
-                Authorization: createAuthToken(
-                    privateKey, deviceId
-                )
-            },
-            body: JSON.stringify(subscription)
-        })
+        const response = await fetch(
+            `https://api.oracle.token.pbg.io/subscribe`,
+            {
+                method: "POST",
+                mode: "cors",
+                headers: {
+                    Authorization: createAuthToken(privateKey, deviceId)
+                },
+                body: JSON.stringify(subscription)
+            }
+        )
 
         if (response.status >= 200 && response.status < 300) {
             return subscription
         } else {
             return undefined
         }
-    } catch(e) {
+    } catch (e) {
         console.error(e)
         return undefined
     }

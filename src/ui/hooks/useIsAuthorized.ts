@@ -3,16 +3,16 @@ import { fetchWorker } from "./useServiceWorker"
 
 const QUERY_KEY = "isAuthorized"
 
-export function useIsAuthorized(): boolean {
+export function useIsAuthorized(): string[] {
     const query = useQuery({
         queryKey: [QUERY_KEY],
         refetchInterval: 1000,
         queryFn: async () => {
-            const b: boolean = await fetchWorker("get", "isAuthorized")
+            const b: string[] = await fetchWorker("get", "isAuthorized")
 
             return b
         }
     })
 
-    return query.data ?? false
+    return query.data ?? []
 }

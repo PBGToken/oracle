@@ -1,6 +1,6 @@
-import styled from "styled-components";
-import { useEvents } from "../hooks";
-import { FeedItem } from "./FeedItem";
+import styled from "styled-components"
+import { useEvents } from "../hooks"
+import { FeedItem } from "./FeedItem"
 
 export function FeedPanel() {
     const events = useEvents()
@@ -9,8 +9,8 @@ export function FeedPanel() {
         <StyledFeedPanel>
             <h2>Feed</h2>
 
-            {events.map(event => {
-                return <FeedItem event={event} key={event.hash}/>
+            {events.map((event) => {
+                return <FeedItem event={event} key={event.hash} />
             })}
         </StyledFeedPanel>
     )

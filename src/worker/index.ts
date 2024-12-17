@@ -10,9 +10,10 @@ import {
 import { signFeed } from "./feed"
 import { scope } from "./scope"
 
-
 scope.addEventListener("activate", (event: ExtendableEvent) => {
-    event.waitUntil(Promise.all([authorizeAndSubscribe(), scope.clients.claim()]))
+    event.waitUntil(
+        Promise.all([authorizeAndSubscribe(), scope.clients.claim()])
+    )
 
     console.log("Service Worker activated")
 })
@@ -48,10 +49,10 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                                 handleSuccess(await listEvents())
                                 break
                             case "isAuthorized":
-                                handleSuccess(isAuthorized())
+                                handleSuccess(await isAuthorized())
                                 break
                             case "isSubscribed":
-                                handleSuccess(isSubscribed())
+                                handleSuccess(await isSubscribed())
                                 break
                             case "notificationsGranted":
                                 handleSuccess(getNotificationsGranted())

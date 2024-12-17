@@ -7,12 +7,13 @@ const QUERY_KEY = "notificationsGranted"
 // move this into the service worker
 export function useNotificationPermission(): [boolean, () => void, string] {
     const client = useQueryClient()
-    const [error, setError] = useState("Notification" in window
-        ? Notification.permission == "denied"
-            ? "Notifications previously denied"
-            : ""
-        : "Notification API not available")
-    
+    const [error, setError] = useState(
+        "Notification" in window
+            ? Notification.permission == "denied"
+                ? "Notifications previously denied"
+                : ""
+            : "Notification API not available"
+    )
 
     const query = useQuery({
         queryKey: [QUERY_KEY],

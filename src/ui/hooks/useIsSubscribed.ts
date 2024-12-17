@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { fetchWorker } from "./useServiceWorker";
+import { useQuery } from "@tanstack/react-query"
+import { fetchWorker } from "./useServiceWorker"
 
 const QUERY_KEY = "isSubscribed"
 

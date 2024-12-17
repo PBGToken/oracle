@@ -13,7 +13,7 @@ async function main() {
         banner: {},
         platform: "browser",
         minify: false,
-        outfile: join(repoRoot, "preload-db.js"),
+        outfile: join(repoRoot, "./dist/preload-db.js"),
         entryPoints: [join(repoRoot, "src", "worker", "preload-db.ts")],
         define: {},
         tsconfig: join(repoRoot, "tsconfig.json")

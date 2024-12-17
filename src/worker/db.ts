@@ -1,11 +1,16 @@
 import { type FeedEvent } from "./FeedEvent"
+import { Secrets } from "./Secrets"
+import { StageName } from "./stages"
 
 const DB_NAME = "ServiceWorkerDB"
 const DB_VERSION = 1
 const CONFIG_TABLE = "config"
 const EVENTS_TABLE = "events"
 
-export function openDatabaseInternal(resolve: (idb: IDBDatabase) => void, reject: (e: Error | null) => void) {
+export function openDatabaseInternal(
+    resolve: (idb: IDBDatabase) => void,
+    reject: (e: Error | null) => void
+) {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onupgradeneeded = (_event: IDBVersionChangeEvent) => {
@@ -47,14 +52,6 @@ export async function appendEvent(event: FeedEvent): Promise<void> {
     }
 }
 
-export function getDeviceId(): Promise<number> {
-    return getConfig("deviceId", 0)
-}
-
-export function getPrivateKey(): Promise<string> {
-    return getConfig("privateKey", "")
-}
-
 // TODO: type-safe events
 export async function listEvents(): Promise<FeedEvent[]> {
     try {
@@ -68,19 +65,47 @@ export async function listEvents(): Promise<FeedEvent[]> {
     }
 }
 
+export function getDeviceId(): Promise<number> {
+    return getConfig("deviceId", 0)
+}
+
 export function setDeviceId(id: number): Promise<void> {
     return setConfig("deviceId", id)
+}
+
+export function getPrivateKey(): Promise<string> {
+    return getConfig("privateKey", "")
 }
 
 export function setPrivateKey(hex: string): Promise<void> {
     return setConfig("privateKey", hex)
 }
 
+export function getSecrets(stage: StageName): Promise<Secrets | undefined> {
+    return getConfig(`secrets/${stage}`, undefined)
+}
+
+export function setSecrets(
+    stage: StageName,
+    secrets: Secrets | undefined
+): Promise<void> {
+    return setConfig(`secrets/${stage}`, secrets)
+}
+
+// empty string is equivalent to not subscribed
+export function getSubscriptionEndpoint(): Promise<string> {
+    return getConfig("subscriptionEndpoint", "")
+}
+
+export function setSubscriptionEndpoint(endpoint: string): Promise<void> {
+    return setConfig("subscriptionEndpoint", endpoint)
+}
+
 async function getConfig<T>(key: string, def: T): Promise<T> {
     try {
         const db = await openDatabase()
 
-        return (await get(db, CONFIG_TABLE, key, def))
+        return await get(db, CONFIG_TABLE, key, def)
     } catch (e) {
         console.error("Error getting config:", e)
 
@@ -92,26 +117,25 @@ async function setConfig(key: string, value: any): Promise<void> {
     try {
         const db = await openDatabase()
 
-        await put(db, CONFIG_TABLE, { key, value })
-
-        console.log("Config saved")
+        // undefined is like deleting
+        if (value === undefined) {
+            await remove(db, CONFIG_TABLE, key)
+            console.log(`${key} deleted from config`)
+        } else {
+            await put(db, CONFIG_TABLE, { key, value })
+            console.log(`${key} saved to config`)
+        }
     } catch (e) {
         console.error("Error saving config:", e)
     }
 }
 
-function put(db: IDBDatabase, storeName: string, data: any): Promise<void> {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, "readwrite")
-        const store = transaction.objectStore(storeName)
-        const request = store.put(data)
-
-        request.onsuccess = () => resolve()
-        request.onerror = () => reject(request.error)
-    })
-}
-
-function get(db: IDBDatabase, storeName: string, key: any, def: any): Promise<any> {
+function get(
+    db: IDBDatabase,
+    storeName: string,
+    key: any,
+    def: any
+): Promise<any> {
     return new Promise((resolve, reject) => {
         const transaction = db.transaction(storeName, "readonly")
         const store = transaction.objectStore(storeName)
@@ -129,6 +153,32 @@ function list(db: IDBDatabase, storeName: string): Promise<any[]> {
         const request = store.getAll()
 
         request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+    })
+}
+
+function remove(
+    db: IDBDatabase,
+    storeName: string,
+    key: IDBValidKey
+): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, "readwrite")
+        const store = transaction.objectStore(storeName)
+        const request = store.delete(key)
+
+        request.onsuccess = () => resolve()
+        request.onerror = () => reject(request.error)
+    })
+}
+
+function put(db: IDBDatabase, storeName: string, data: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, "readwrite")
+        const store = transaction.objectStore(storeName)
+        const request = store.put(data)
+
+        request.onsuccess = () => resolve()
         request.onerror = () => reject(request.error)
     })
 }

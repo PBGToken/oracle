@@ -1,12 +1,13 @@
 import { dirname, join } from "node:path"
 import { defineConfig } from "vite"
 import makeReactPlugin from "@vitejs/plugin-react"
+import { viteStaticCopy } from "vite-plugin-static-copy"
 
 // process.argv[1] is the vite binary
 const repoRoot = join(dirname(process.argv[1]), "../../")
 const srcDir = join(repoRoot, "./src/ui")
-//const assetsDir = join(repoRoot, "./src/assets")
-const dstDir = join(repoRoot, "./")
+const assetsDir = join(repoRoot, "./assets")
+const dstDir = join(repoRoot, "./dist")
 
 export default defineConfig({
     root: srcDir,
@@ -30,7 +31,6 @@ export default defineConfig({
     server: {
         port: 80
     },
-    //publicDir: assetsDir,
     plugins: [
         makeReactPlugin({
             babel: {
@@ -46,6 +46,14 @@ export default defineConfig({
                     ]
                 ]
             }
+        }),
+        viteStaticCopy({
+            targets: [
+                {
+                    src: join(assetsDir, "*"),
+                    dest: dstDir
+                }
+            ]
         })
     ]
 })

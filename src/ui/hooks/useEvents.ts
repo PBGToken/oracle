@@ -9,11 +9,11 @@ export function useEvents(): FeedEvent[] {
         queryKey: [QUERY_KEY],
         refetchInterval: 5000,
         queryFn: async () => {
-            const events:  FeedEvent[] = await fetchWorker("get", "events")
+            const events: FeedEvent[] = await fetchWorker("get", "events")
 
             // newest first
             events.sort((a, b) => b.timestamp - a.timestamp)
-            
+
             return events
         }
     })
