@@ -1,4 +1,11 @@
-import { authorizeAllStages, authorizeAndSubscribe, createSubscription, isAuthorized, isSubscribed, syncSubscription } from "./auth"
+import {
+    authorizeAllStages,
+    authorizeAndSubscribe,
+    createSubscription,
+    isAuthorized,
+    isSubscribed,
+    syncSubscription
+} from "./auth"
 import {
     getDeviceId,
     getPrivateKey,
@@ -119,12 +126,12 @@ async function sync(): Promise<void> {
 
     let subscription = await getSubscription()
 
-    if (subscription && await isValidSubscription(subscription)) {
+    if (subscription && (await isValidSubscription(subscription))) {
         await syncSubscription(subscription)
     } else {
         await createSubscription()
     }
-}   
+}
 
 async function isValidSubscription(subscription: string): Promise<boolean> {
     try {
@@ -143,7 +150,7 @@ async function isValidSubscription(subscription: string): Promise<boolean> {
         }
 
         return true
-    } catch(_e) {
+    } catch (_e) {
         return false
     }
 }

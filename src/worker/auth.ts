@@ -116,23 +116,22 @@ export async function syncSubscription(subscription: string) {
         for (let stageName of STAGE_NAMES) {
             const baseUrl = stages[stageName].baseUrl
 
-            const response = await fetch(
-                `${baseUrl}/subscribe`,
-                {
-                    method: "POST",
-                    mode: "cors",
-                    headers: {
-                        Authorization: createAuthToken(privateKey, deviceId)
-                    },
-                    body: subscription
-                }
-            )
+            const response = await fetch(`${baseUrl}/subscribe`, {
+                method: "POST",
+                mode: "cors",
+                headers: {
+                    Authorization: createAuthToken(privateKey, deviceId)
+                },
+                body: subscription
+            })
 
             if (!response.ok) {
-                console.log(`Failed to subscribe to ${stageName} push notifications: ${response.statusText}`)   
+                console.log(
+                    `Failed to subscribe to ${stageName} push notifications: ${response.statusText}`
+                )
             }
         }
-    } catch(e) {
+    } catch (e) {
         console.error(e)
     }
 }

@@ -8,7 +8,10 @@ type FeedItemProps = {
 export function FeedItem({ event }: FeedItemProps) {
     return (
         <StyledFeedItem>
-            <p>{event.stage ?? "Mainnet"}{event.error ? `, not signed (${event.error})` : ""}</p>
+            <p>
+                {event.stage ?? "Mainnet"}
+                {event.error ? `, not signed (${event.error})` : ""}
+            </p>
             <p>{event.hash}</p>
             <p>{new Date(event.timestamp).toLocaleString()}</p>
             <p>{formatPrices(event.prices ?? {})}</p>

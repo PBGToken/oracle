@@ -10,7 +10,12 @@ export function FeedPanel() {
             <h2>Feed</h2>
 
             {events.map((event) => {
-                return <FeedItem event={event} key={event.hash + event.timestamp.toString()} />
+                return (
+                    <FeedItem
+                        event={event}
+                        key={event.hash + event.timestamp.toString()}
+                    />
+                )
             })}
         </StyledFeedPanel>
     )
