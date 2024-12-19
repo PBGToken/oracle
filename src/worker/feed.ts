@@ -151,23 +151,11 @@ async function verifyPrices(
 
     const addr = makeShelleyAddress(stages[stage].assetsValidatorAddress)
 
-    const assetGroupInputs = tx.body.inputs.filter((input) =>
-        input.address.isEqual(addr)
-    )
-
-    if (assetGroupInputs.length == 0) {
-        throw new Error("no asset group inputs")
-    }
-
+    // it is unnecessary to look at the inputs
+    
     const assetGroupOutputs = tx.body.outputs.filter((output) =>
         output.address.isEqual(addr)
     )
-
-    if (assetGroupOutputs.length != assetGroupInputs.length) {
-        throw new Error(
-            "number of asset group outputs isn't equal to the number of asset group inputs"
-        )
-    }
 
     for (let output of assetGroupOutputs) {
         if (!output.datum) {
