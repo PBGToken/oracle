@@ -99,16 +99,9 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
 
 scope.addEventListener("push", (event: PushEvent) => {
     const payload = event.data ? event.data.json() : {}
-    const message = payload.message || "N/A"
-    //const stage = payload.stage || "preprod"
+    const stage: string = payload.stage
 
-    const options = {
-        body: message,
-        icon: "icon.png",
-        badge: "badge.png"
-    }
-
-    event.waitUntil(signFeed(options))
+    event.waitUntil(signFeed(stage))
 })
 
 scope.addEventListener("pushsubscriptionchange", async (_event: Event) => {

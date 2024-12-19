@@ -34,9 +34,9 @@ export async function authorizeAndSubscribe(): Promise<void> {
 
 export async function authorizeAllStages(): Promise<void> {
     try {
-        await authorizeStage("mainnet")
-        await authorizeStage("beta")
-        await authorizeStage("preprod")
+        await authorizeStage("Mainnet")
+        await authorizeStage("Beta")
+        await authorizeStage("Preprod")
     } catch (e) {
         console.error(e)
         return
