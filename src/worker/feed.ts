@@ -1,18 +1,33 @@
-import { bytesToHex, hexToBytes } from "@helios-lang/codec-utils"
+import {
+    bytesToHex,
+    decodeUtf8,
+    encodeUtf8,
+    equalsBytes,
+    hexToBytes
+} from "@helios-lang/codec-utils"
 import {
     type Tx,
     type Signature,
     decodeTx,
     makeShelleyAddress,
     convertUplcDataToAssetClass,
-    makeAssetClass
+    makeAssetClass,
+    AssetClass
 } from "@helios-lang/ledger"
-import { findPool, getAllV2Pools } from "@helios-lang/minswap"
+import { findPool, getAllV2Pools, Pool } from "@helios-lang/minswap"
 import {
+    BlockfrostV0Client,
     makeBip32PrivateKey,
     makeBlockfrostV0Client
 } from "@helios-lang/tx-utils"
-import { expectIntData, expectListData } from "@helios-lang/uplc"
+import { expectDefined } from "@helios-lang/type-utils"
+import {
+    expectByteArrayData,
+    expectConstrData,
+    expectIntData,
+    expectListData,
+    expectMapData
+} from "@helios-lang/uplc"
 import { appendEvent, getDeviceId, getPrivateKey, getSecrets } from "./db"
 import { formatPrices } from "./FeedEvent"
 import { scope } from "./scope"
@@ -133,10 +148,6 @@ async function fetchPriceFeed(
     }
 }
 
-const USDM_ASSET_CLASS = makeAssetClass(
-    "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad.0014df105553444d"
-)
-
 // hard code USDM for now
 async function verifyPrices(
     tx: Tx,
@@ -144,6 +155,8 @@ async function verifyPrices(
     prices: Record<string, number>
 ): Promise<void> {
     const secrets = await getSecrets(stage)
+    const networkName: "preprod" | "mainnet" =
+        stage == "Preprod" ? "preprod" : "mainnet"
 
     if (!secrets) {
         throw new Error("not authorized for stage")
@@ -152,10 +165,26 @@ async function verifyPrices(
     const addr = makeShelleyAddress(stages[stage].assetsValidatorAddress)
 
     // it is unnecessary to look at the inputs
-    
+
     const assetGroupOutputs = tx.body.outputs.filter((output) =>
         output.address.isEqual(addr)
     )
+
+    // a BlockfrostV0Client is used to get minswap price data
+    const cardanoClient = makeBlockfrostV0Client(
+        networkName,
+        secrets.blockfrostApiKey
+    )
+
+    let _pools: Pool[] | undefined = undefined
+
+    const getPools = async (): Promise<Pool[]> => {
+        if (!_pools) {
+            _pools = await getAllV2Pools(cardanoClient)
+        }
+
+        return _pools
+    }
 
     for (let output of assetGroupOutputs) {
         if (!output.datum) {
@@ -182,39 +211,171 @@ async function verifyPrices(
                 expectIntData(priceTimeStampData).value
             )
 
-            // TODO: more scalable mechanism of detecting asset classes
-            if (assetClass.isEqual(USDM_ASSET_CLASS)) {
-                prices["USDM"] = price // set this for debugging purposes
+            const { ticker: name, decimals } = await getAssetClassInfo(
+                cardanoClient,
+                assetClass
+            )
 
-                if (Math.abs(priceTimestamp - Date.now()) > 5 * 60_000) {
-                    throw new Error(
-                        `invalid USDM price timestamp ${new Date(priceTimestamp).toLocaleString()}`
-                    )
-                }
+            prices[name] = price // set this for debugging purposes
 
-                const cardanoClient = makeBlockfrostV0Client(
-                    stage == "Preprod" ? "preprod" : "mainnet",
-                    secrets.blockfrostApiKey
-                )
-                const pools = await getAllV2Pools(cardanoClient)
-
-                // now fetch the price from minswap
-                const pool = findPool(pools, makeAssetClass("."), assetClass)
-
-                // TODO: don't hardcode decimals
-                const adaPerAsset = pool.getPrice(6, 6)
-
-                if (Math.abs((price - adaPerAsset) / adaPerAsset) > 0.005) {
-                    throw new Error(
-                        `USDM price out of range, expected ~${adaPerAsset.toFixed(6)}, got ${price.toFixed(6)}`
-                    )
-                }
-            } else {
+            if (Math.abs(priceTimestamp - Date.now()) > 5 * 60_000) {
                 throw new Error(
-                    `unrecognized asset class ${assetClass.toFingerprint()}`
+                    `invalid ${name} price timestamp ${new Date(priceTimestamp).toLocaleString()}`
+                )
+            }
+
+            const pools = await getPools()
+
+            // now fetch the price from minswap
+            const pool = findPool(pools, makeAssetClass("."), assetClass)
+
+            const adaPerAsset = pool.getPrice(6, decimals)
+
+            if (Math.abs((price - adaPerAsset) / adaPerAsset) > 0.005) {
+                throw new Error(
+                    `${name} price out of range, expected ~${adaPerAsset.toFixed(decimals)}, got ${price.toFixed(decimals)}`
                 )
             }
         }
+    }
+}
+
+async function getAssetClassInfo(
+    cardanoClient: BlockfrostV0Client,
+    assetClass: AssetClass
+): Promise<{ ticker: string; decimals: number }> {
+    // if the token name starts with the Cip68 (333) prefix, find the corresponding (100) token
+    if (equalsBytes(assetClass.tokenName.slice(0, 4), hexToBytes("0014df10"))) {
+        try {
+            // if this fails, fall back to using metadata service
+            const metadataAssetClass = makeAssetClass(
+                assetClass.mph,
+                hexToBytes("000643b0").concat(assetClass.tokenName.slice(4))
+            )
+
+            const metadataAddresses =
+                await cardanoClient.getAddressesWithAssetClass(
+                    metadataAssetClass
+                )
+
+            if (metadataAddresses.length == 1) {
+                const { address, quantity } = metadataAddresses[0]
+
+                if (quantity != 1n) {
+                    throw new Error("multiple tokens")
+                }
+
+                const utxos = await cardanoClient.getUtxosWithAssetClass(
+                    address,
+                    metadataAssetClass
+                )
+
+                if (utxos.length != 1) {
+                    throw new Error("multiple utxos")
+                }
+
+                const utxo = utxos[0]
+
+                const datum = expectDefined(utxo.datum?.data, "no inline datum")
+
+                const fields = expectConstrData(datum, 0).fields
+
+                const content = expectMapData(
+                    expectDefined(fields[0], "bad constrdata first field"),
+                    "expected map data"
+                )
+
+                const tickerI = content.items.findIndex(([key]) => {
+                    return equalsBytes(
+                        expectByteArrayData(key).bytes,
+                        encodeUtf8("ticker")
+                    )
+                })
+
+                if (tickerI == -1) {
+                    throw new Error("ticker entry not found")
+                }
+
+                const decimalsI = content.items.findIndex(([key]) => {
+                    return equalsBytes(
+                        expectByteArrayData(key).bytes,
+                        encodeUtf8("decimals")
+                    )
+                })
+
+                if (decimalsI == -1) {
+                    throw new Error("decimals entry not found")
+                }
+
+                const ticker = decodeUtf8(
+                    expectByteArrayData(
+                        content.items[tickerI][1],
+                        "ticker isn't bytearraydata"
+                    ).bytes
+                )
+                const decimals = Number(
+                    expectIntData(
+                        content.items[decimalsI][1],
+                        "decimals isn't IntData"
+                    ).value
+                )
+
+                return {
+                    ticker,
+                    decimals
+                }
+            } else {
+                throw new Error("multiple addresses")
+            }
+        } catch (e: any) {
+            console.error(
+                `Falling back to CIP26 for ${assetClass.toString()} because there is a CIP68 metadata token error: ${e.message}`
+            )
+        }
+    }
+
+    const baseUrl: string = {
+        mainnet: "https://tokens.cardano.org/metadata",
+        preprod: "https://metadata.world.dev.cardano.org/metadata", // preprod and preview use the same?
+        preview: "https://metadata.world.dev.cardano.org/metadata"
+    }[cardanoClient.networkName]
+
+    const url = `${baseUrl}/${assetClass.toString().replace(".", "")}`
+
+    const response = await fetch(url)
+
+    if (!response.ok || response.status == 204) {
+        throw new Error(
+            `Failed to fetch CIP26 metadata for ${assetClass.toString()}`
+        )
+    }
+
+    const obj = await response.json()
+
+    const ticker: unknown = expectDefined(
+        obj.ticker?.value,
+        `${assetClass.toString()} CIP26 ticker.value undefined`
+    )
+    const decimals: unknown = expectDefined(
+        obj.decimals?.value,
+        `${assetClass.toString()} CIP26 decimals.value undefined`
+    )
+
+    if (typeof ticker != "string") {
+        throw new Error(
+            `${assetClass.toString()} CIP26 ticker.value isn't a string`
+        )
+    }
+
+    if (typeof decimals != "number") {
+        throw new Error(
+            `${assetClass.toString()} CIP26 decimals.value isn't a number`
+        )
+    }
+
+    return {
+        ticker,
+        decimals
     }
 }
 

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { defineConfig } from "vite"
 import makeReactPlugin from "@vitejs/plugin-react"
@@ -8,6 +9,8 @@ const repoRoot = join(dirname(process.argv[1]), "../../")
 const srcDir = join(repoRoot, "./src/ui")
 const assetsDir = join(repoRoot, "./assets")
 const dstDir = join(repoRoot, "./dist")
+
+const version = JSON.parse(readFileSync("./package.json").toString()).version
 
 export default defineConfig({
     root: srcDir,
@@ -26,7 +29,9 @@ export default defineConfig({
             mangle: false
         }
     },
-    define: {},
+    define: {
+        "process.env.VERSION": JSON.stringify(version)
+    },
     resolve: {},
     server: {
         port: 80

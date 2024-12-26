@@ -34,6 +34,7 @@ export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
     return (
         <StyledStatusPanel>
             <h2>Status</h2>
+            <p>Version: {process.env.VERSION}</p>
             <p>Service worker: {serviceWorkerStatus}</p>
             <p>
                 {granted
