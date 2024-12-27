@@ -39,6 +39,8 @@ import {
     stages
 } from "./stages"
 
+const MAX_REL_DIFF = 0.01 // 1%
+
 export async function signFeed(stage: string): Promise<void> {
     const privateKey = await getPrivateKey()
     const deviceId = await getDeviceId()
@@ -231,7 +233,7 @@ async function verifyPrices(
 
             const adaPerAsset = pool.getPrice(6, decimals)
 
-            if (Math.abs((price - adaPerAsset) / adaPerAsset) > 0.005) {
+            if (Math.abs((price - adaPerAsset) / adaPerAsset) > MAX_REL_DIFF) {
                 throw new Error(
                     `${name} price out of range, expected ~${adaPerAsset.toFixed(6)}, got ${price.toFixed(6)}`
                 )
