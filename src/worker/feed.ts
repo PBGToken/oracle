@@ -233,7 +233,7 @@ async function verifyPrices(
 
             if (Math.abs((price - adaPerAsset) / adaPerAsset) > 0.005) {
                 throw new Error(
-                    `${name} price out of range, expected ~${adaPerAsset.toFixed(decimals)}, got ${price.toFixed(decimals)}`
+                    `${name} price out of range, expected ~${adaPerAsset.toFixed(6)}, got ${price.toFixed(6)}`
                 )
             }
         }
