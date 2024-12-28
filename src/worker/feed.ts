@@ -18,7 +18,9 @@ import { findPool, getAllV2Pools, Pool } from "@helios-lang/minswap"
 import {
     BlockfrostV0Client,
     makeBip32PrivateKey,
-    makeBlockfrostV0Client
+    makeBlockfrostV0Client,
+    makeReadonlyCardanoMultiClient,
+    ReadonlyCardanoClient
 } from "@helios-lang/tx-utils"
 import { expectDefined } from "@helios-lang/type-utils"
 import {
@@ -28,6 +30,7 @@ import {
     expectListData,
     expectMapData
 } from "@helios-lang/uplc"
+import { makeDemeterUtxoRpcClient } from "@helios-lang/utxorpc"
 import { appendEvent, getDeviceId, getPrivateKey, getSecrets } from "./db"
 import { formatPrices } from "./FeedEvent"
 import { scope } from "./scope"
@@ -173,10 +176,19 @@ async function verifyPrices(
     )
 
     // a BlockfrostV0Client is used to get minswap price data
-    const cardanoClient = makeBlockfrostV0Client(
+    const blockfrostClient = makeBlockfrostV0Client(
         networkName,
         secrets.blockfrostApiKey
     )
+
+    let cardanoClient: ReadonlyCardanoClient = blockfrostClient
+
+    if (secrets.demeterUtxoRpcApiKey && secrets.demeterUtxoRpcHost) {
+        cardanoClient = makeReadonlyCardanoMultiClient([
+            makeDemeterUtxoRpcClient(secrets.demeterUtxoRpcHost, secrets.demeterUtxoRpcApiKey),
+            cardanoClient
+        ])
+    }
 
     let _pools: Pool[] | undefined = undefined
 
@@ -187,6 +199,8 @@ async function verifyPrices(
 
         return _pools
     }
+
+    const validationErrors: Error[] = []
 
     for (let output of assetGroupOutputs) {
         if (!output.datum) {
@@ -214,16 +228,17 @@ async function verifyPrices(
             )
 
             const { ticker: name, decimals } = await getAssetClassInfo(
-                cardanoClient,
+                blockfrostClient,
                 assetClass
             )
 
             prices[name] = price // set this for debugging purposes
 
             if (Math.abs(priceTimestamp - Date.now()) > 5 * 60_000) {
-                throw new Error(
+                validationErrors.push(new Error(
                     `invalid ${name} price timestamp ${new Date(priceTimestamp).toLocaleString()}`
-                )
+                ))
+                continue
             }
 
             const pools = await getPools()
@@ -234,14 +249,22 @@ async function verifyPrices(
             const adaPerAsset = pool.getPrice(6, decimals)
 
             if (Math.abs((price - adaPerAsset) / adaPerAsset) > MAX_REL_DIFF) {
-                throw new Error(
+                validationErrors.push(new Error(
                     `${name} price out of range, expected ~${adaPerAsset.toFixed(6)}, got ${price.toFixed(6)}`
-                )
+                ))
+                continue
             }
         }
     }
+
+    if (validationErrors.length == 1) {
+        throw validationErrors[0]
+    } else if (validationErrors.length > 0) {
+        throw new Error(validationErrors.map(e => e.message).join("; "))
+    }
 }
 
+// TODO: use Demeter UtxO client
 async function getAssetClassInfo(
     cardanoClient: BlockfrostV0Client,
     assetClass: AssetClass

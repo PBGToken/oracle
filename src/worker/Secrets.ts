@@ -7,6 +7,8 @@ import { StageName, stages } from "./stages"
 // for each stage
 export type Secrets = {
     blockfrostApiKey: string
+    demeterUtxoRpcApiKey?: string
+    demeterUtxoRpcHost?: string
 }
 
 // undefined return value signifies unauthorized
