@@ -185,7 +185,10 @@ async function verifyPrices(
 
     if (secrets.demeterUtxoRpcApiKey && secrets.demeterUtxoRpcHost) {
         cardanoClient = makeReadonlyCardanoMultiClient([
-            makeDemeterUtxoRpcClient(secrets.demeterUtxoRpcHost, secrets.demeterUtxoRpcApiKey),
+            makeDemeterUtxoRpcClient(
+                secrets.demeterUtxoRpcHost,
+                secrets.demeterUtxoRpcApiKey
+            ),
             cardanoClient
         ])
     }
@@ -235,9 +238,11 @@ async function verifyPrices(
             prices[name] = price // set this for debugging purposes
 
             if (Math.abs(priceTimestamp - Date.now()) > 5 * 60_000) {
-                validationErrors.push(new Error(
-                    `invalid ${name} price timestamp ${new Date(priceTimestamp).toLocaleString()}`
-                ))
+                validationErrors.push(
+                    new Error(
+                        `invalid ${name} price timestamp ${new Date(priceTimestamp).toLocaleString()}`
+                    )
+                )
                 continue
             }
 
@@ -249,9 +254,11 @@ async function verifyPrices(
             const adaPerAsset = pool.getPrice(6, decimals)
 
             if (Math.abs((price - adaPerAsset) / adaPerAsset) > MAX_REL_DIFF) {
-                validationErrors.push(new Error(
-                    `${name} price out of range, expected ~${adaPerAsset.toFixed(6)}, got ${price.toFixed(6)}`
-                ))
+                validationErrors.push(
+                    new Error(
+                        `${name} price out of range, expected ~${adaPerAsset.toFixed(6)}, got ${price.toFixed(6)}`
+                    )
+                )
                 continue
             }
         }
@@ -260,7 +267,7 @@ async function verifyPrices(
     if (validationErrors.length == 1) {
         throw validationErrors[0]
     } else if (validationErrors.length > 0) {
-        throw new Error(validationErrors.map(e => e.message).join("; "))
+        throw new Error(validationErrors.map((e) => e.message).join("; "))
     }
 }
 
