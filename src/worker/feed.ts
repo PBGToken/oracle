@@ -18,9 +18,7 @@ import { findPool, getAllV2Pools, Pool } from "@helios-lang/minswap"
 import {
     BlockfrostV0Client,
     makeBip32PrivateKey,
-    makeBlockfrostV0Client,
-    makeReadonlyCardanoMultiClient,
-    ReadonlyCardanoClient
+    makeBlockfrostV0Client
 } from "@helios-lang/tx-utils"
 import { expectDefined } from "@helios-lang/type-utils"
 import {
@@ -30,7 +28,6 @@ import {
     expectListData,
     expectMapData
 } from "@helios-lang/uplc"
-import { makeDemeterUtxoRpcClient } from "@helios-lang/utxorpc"
 import { appendEvent, getDeviceId, getPrivateKey, getSecrets } from "./db"
 import { formatPrices } from "./FeedEvent"
 import { scope } from "./scope"
@@ -176,22 +173,13 @@ async function verifyPrices(
     )
 
     // a BlockfrostV0Client is used to get minswap price data
-    const blockfrostClient = makeBlockfrostV0Client(
+    const cardanoClient = makeBlockfrostV0Client(
         networkName,
         secrets.blockfrostApiKey
     )
 
-    let cardanoClient: ReadonlyCardanoClient = blockfrostClient
-
-    if (secrets.demeterUtxoRpcApiKey && secrets.demeterUtxoRpcHost) {
-        cardanoClient = makeReadonlyCardanoMultiClient([
-            makeDemeterUtxoRpcClient(
-                secrets.demeterUtxoRpcHost,
-                secrets.demeterUtxoRpcApiKey
-            ),
-            cardanoClient
-        ])
-    }
+    // TODO: other clients
+    // can't use demeter utxo rpc because it doesn't set the Access-Control-Allow-Origin to *, and setting up a CORS proxy would allow spoofing the returned data with other price data
 
     let _pools: Pool[] | undefined = undefined
 
@@ -231,7 +219,7 @@ async function verifyPrices(
             )
 
             const { ticker: name, decimals } = await getAssetClassInfo(
-                blockfrostClient,
+                cardanoClient,
                 assetClass
             )
 
