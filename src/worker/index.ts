@@ -118,18 +118,19 @@ scope.addEventListener("push", (event: PushEvent) => {
     const stage: string = payload.stage
     const heartbeat: boolean = !!payload.heartbeat
 
-    event.waitUntil((async () => {
-        if (heartbeat) {
-            // TODO: only respond to this if this device was marked as primary
-            if (await getIsPrimary()) {
-                // TODO: include the response delay in the notification body
-                await showNotification("Heartbeat", `${stage}`)
+    event.waitUntil(
+        (async () => {
+            if (heartbeat) {
+                // TODO: only respond to this if this device was marked as primary
+                if (await getIsPrimary()) {
+                    // TODO: include the response delay in the notification body
+                    await showNotification("Heartbeat", `${stage}`)
+                }
+            } else {
+                await signFeed(stage)
             }
-        } else {
-            await signFeed(stage)
-        }
-    })())
-    
+        })()
+    )
 })
 
 scope.addEventListener("pushsubscriptionchange", async (_event: Event) => {

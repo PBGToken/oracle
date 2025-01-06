@@ -102,7 +102,10 @@ export async function signFeed(stage: string): Promise<void> {
     }
 }
 
-export async function showNotification(title: string, message: string): Promise<void> {
+export async function showNotification(
+    title: string,
+    message: string
+): Promise<void> {
     const options = {
         icon: "icon.png",
         badge: "badge.png"
