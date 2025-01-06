@@ -1,6 +1,7 @@
 import { makeBase64 } from "@helios-lang/codec-utils"
 import {
     getDeviceId,
+    getIsPrimary,
     getPrivateKey,
     getSecrets,
     getSubscription,
@@ -113,6 +114,8 @@ export async function syncSubscription(subscription: string) {
 
         const deviceId = await getDeviceId()
 
+        const isPrimary = await getIsPrimary()
+
         for (let stageName of STAGE_NAMES) {
             const baseUrl = stages[stageName].baseUrl
 
@@ -122,7 +125,7 @@ export async function syncSubscription(subscription: string) {
                 headers: {
                     Authorization: createAuthToken(privateKey, deviceId)
                 },
-                body: subscription
+                body: JSON.stringify({ subscription, isPrimary })
             })
 
             if (!response.ok) {
