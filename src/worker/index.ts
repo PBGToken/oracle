@@ -19,6 +19,8 @@ import {
 } from "./db"
 import { showNotification, signFeed } from "./feed"
 import { scope } from "./scope"
+import { createAuthToken } from "./Secrets"
+import { isValidStageName, stages } from "./stages"
 
 scope.addEventListener("activate", (event: ExtendableEvent) => {
     event.waitUntil(
@@ -118,13 +120,31 @@ scope.addEventListener("push", (event: PushEvent) => {
     const stage: string = payload.stage
     const heartbeat: boolean = !!payload.heartbeat
 
+    console.log("Received heartbeat message", heartbeat, stage)
+
     event.waitUntil(
         (async () => {
             if (heartbeat) {
-                // TODO: only respond to this if this device was marked as primary
-                if (await getIsPrimary()) {
+                if ((await getIsPrimary()) && isValidStageName(stage)) {
                     // TODO: include the response delay in the notification body
-                    await showNotification("Heartbeat", `${stage}`)
+                    await showNotification(
+                        "Heartbeat",
+                        `${stage}${payload.timestamp ? `, delay=${Date.now() - payload.timestamp}ms` : ""}`
+                    )
+
+                    const baseUrl = stages[stage].baseUrl
+
+                    const privateKey = await getPrivateKey()
+                    const deviceId = await getDeviceId()
+
+                    await fetch(`${baseUrl}/pong`, {
+                        method: "POST",
+                        mode: "cors",
+                        headers: {
+                            Authorization: createAuthToken(privateKey, deviceId)
+                        },
+                        body: JSON.stringify({})
+                    })
                 }
             } else {
                 await signFeed(stage)
