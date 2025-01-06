@@ -1,6 +1,7 @@
 export { useDeviceId } from "./useDeviceId"
 export { useEvents } from "./useEvents"
 export { useIsAuthorized } from "./useIsAuthorized"
+export { useIsPrimary } from "./useIsPrimary"
 export { useIsSubscribed } from "./useIsSubscribed"
 export { useNotificationPermission } from "./useNotificationPermission"
 export { usePrivateKey } from "./usePrivateKey"

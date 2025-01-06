@@ -9,6 +9,7 @@ import { makeBip32PrivateKey } from "@helios-lang/tx-utils"
 import { hexToBytes } from "@helios-lang/codec-utils"
 import { Button } from "./Button"
 import { ErrorMessage } from "./ErrorMessage"
+import { IsPrimary } from "./IsPrimary"
 
 const borderRadius = 5
 
@@ -43,6 +44,7 @@ export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
             </p>
             {!granted && <Button onClick={grant}>Enable Notifications</Button>}
             {error && <ErrorMessage>{error}</ErrorMessage>}
+            <IsPrimary />
             <p>Key: {pubKeyHash == "" ? "unset" : pubKeyHash}</p>
             <IsAuthorized />
             <p>{isSubscribed ? "Subscribed" : "Not subscribed"}</p>

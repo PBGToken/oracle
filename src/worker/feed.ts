@@ -82,6 +82,7 @@ export async function signFeed(stage: string): Promise<void> {
         }
     } catch (e) {
         const errorMessage = (e as Error).message
+
         await appendEvent({
             stage,
             hash: tx ? bytesToHex(tx.body.hash()) : "NA",
@@ -101,7 +102,7 @@ export async function signFeed(stage: string): Promise<void> {
     }
 }
 
-async function showNotification(title: string, message: string): Promise<void> {
+export async function showNotification(title: string, message: string): Promise<void> {
     const options = {
         icon: "icon.png",
         badge: "badge.png"

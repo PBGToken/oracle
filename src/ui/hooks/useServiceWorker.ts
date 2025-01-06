@@ -92,13 +92,14 @@ export function fetchWorker(
         | "events"
         | "isAuthorized"
         | "isSubscribed"
+        | "isPrimary"
         | "notificationsGranted"
         | "privateKey"
         | "status"
 ): Promise<any>
 export function fetchWorker(
     method: "set",
-    key: "deviceId" | "privateKey",
+    key: "deviceId" | "isPrimary" | "privateKey",
     value: any
 ): Promise<any>
 export function fetchWorker(
@@ -108,6 +109,7 @@ export function fetchWorker(
         | "events"
         | "isAuthorized"
         | "isSubscribed"
+        | "isPrimary"
         | "notificationsGranted"
         | "privateKey"
         | "status",

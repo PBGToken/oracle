@@ -73,6 +73,14 @@ export function setDeviceId(id: number): Promise<void> {
     return setConfig("deviceId", id)
 }
 
+export function getIsPrimary(): Promise<boolean> {
+    return getConfig("isPrimary", false)
+}
+
+export function setIsPrimary(primary: boolean): Promise<void> {
+    return setConfig("isPrimary", primary)
+}
+
 export function getPrivateKey(): Promise<string> {
     return getConfig("privateKey", "")
 }
