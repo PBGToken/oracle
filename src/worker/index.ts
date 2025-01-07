@@ -15,6 +15,7 @@ import {
     openDatabase,
     setDeviceId,
     setIsPrimary,
+    setLastHeartbeat,
     setPrivateKey
 } from "./db"
 import { showNotification, signFeed } from "./feed"
@@ -120,16 +121,16 @@ scope.addEventListener("push", (event: PushEvent) => {
     const stage: string = payload.stage
     const heartbeat: boolean = !!payload.heartbeat
 
-    console.log("Received heartbeat message", heartbeat, stage)
-
     event.waitUntil(
         (async () => {
             if (heartbeat) {
                 if ((await getIsPrimary()) && isValidStageName(stage)) {
+                    const now = Date.now()
+
                     // TODO: include the response delay in the notification body
                     await showNotification(
                         "Heartbeat",
-                        `${stage}${payload.timestamp ? `, delay=${Date.now() - payload.timestamp}ms` : ""}`
+                        `${stage}${payload.timestamp ? `, timestamp=${new Date(payload.timestamp).toLocaleString()}, delay=${now - payload.timestamp}ms` : ""}`
                     )
 
                     const baseUrl = stages[stage].baseUrl
@@ -145,10 +146,14 @@ scope.addEventListener("push", (event: PushEvent) => {
                         },
                         body: JSON.stringify({})
                     })
+
+                    if (payload.timestamp) {
+                        setLastHeartbeat(payload.timestamp)
+                    }
                 }
-            } else {
+            } else if (stage) {
                 await signFeed(stage)
-            }
+            } // if the payload is malformed then ignore it
         })()
     )
 })

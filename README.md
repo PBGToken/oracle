@@ -22,4 +22,6 @@ Enable developer options: Settings > About phone > Tap Build number 7 times
 
 Use developer options to enable Stay Awake: Settings > System > Developer options> Stay awake
 
+### Android 14
+
 ## Desktop browsers

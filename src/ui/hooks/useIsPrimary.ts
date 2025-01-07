@@ -16,6 +16,7 @@ export function useIsPrimary(): [
 
     const query = useQuery({
         queryKey: [QUERY_KEY],
+        refetchInterval: 1000,
         queryFn: async () => {
             const key: boolean = await fetchWorker("get", "isPrimary")
 

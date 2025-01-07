@@ -1,6 +1,6 @@
 import { type ChangeEvent } from "react"
 import styled from "styled-components"
-import { useIsPrimary } from "../hooks"
+import { useIsPrimary, useLastHeartbeat } from "../hooks"
 
 export function IsPrimary() {
     // useState hook for managing the checkbox state
@@ -22,6 +22,8 @@ export function IsPrimary() {
                 checked={!!isPrimary}
                 onChange={handleCheckboxChange}
             />
+
+            {!!isPrimary && <LastHeartbeat />}
         </StyledIsPrimary>
     )
 }
@@ -29,4 +31,17 @@ export function IsPrimary() {
 const StyledIsPrimary = styled.div`
     display: flex;
     flex-direction: row;
+`
+
+function LastHeartbeat() {
+    const hb = useLastHeartbeat()
+    return (
+        <StyledLastHeartbeat>
+            Last heartbeat: {hb == 0 ? "never" : hb.toString()}
+        </StyledLastHeartbeat>
+    )
+}
+
+const StyledLastHeartbeat = styled.p`
+    margin-left: 30px;
 `

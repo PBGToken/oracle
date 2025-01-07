@@ -93,6 +93,7 @@ export function fetchWorker(
         | "isAuthorized"
         | "isSubscribed"
         | "isPrimary"
+        | "lastHeartbeat"
         | "notificationsGranted"
         | "privateKey"
         | "status"
@@ -110,6 +111,7 @@ export function fetchWorker(
         | "isAuthorized"
         | "isSubscribed"
         | "isPrimary"
+        | "lastHeartbeat"
         | "notificationsGranted"
         | "privateKey"
         | "status",

@@ -81,6 +81,14 @@ export function setIsPrimary(primary: boolean): Promise<void> {
     return setConfig("isPrimary", primary)
 }
 
+export function getLastHeartbeat(): Promise<number> {
+    return getConfig("lastHeartbeat", 0)
+}
+
+export function setLastHeartbeat(hb: number): Promise<void> {
+    return setConfig("lastHeartbeat", hb)
+}
+
 export function getPrivateKey(): Promise<string> {
     return getConfig("privateKey", "")
 }
