@@ -9,6 +9,7 @@ import {
 import {
     getDeviceId,
     getIsPrimary,
+    getLastHeartbeat,
     getPrivateKey,
     getSubscription,
     listEvents,
@@ -70,6 +71,9 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                             case "isSubscribed":
                                 handleSuccess(await isSubscribed())
                                 break
+                            case "lastHeartbeat":
+                                handleSuccess(await getLastHeartbeat())
+                                break
                             case "notificationsGranted":
                                 handleSuccess(getNotificationsGranted())
                                 break
@@ -125,19 +129,12 @@ scope.addEventListener("push", (event: PushEvent) => {
         (async () => {
             if (heartbeat) {
                 if ((await getIsPrimary()) && isValidStageName(stage)) {
-                    const now = Date.now()
-
-                    // TODO: include the response delay in the notification body
-                    await showNotification(
-                        "Heartbeat",
-                        `${stage}${payload.timestamp ? `, timestamp=${new Date(payload.timestamp).toLocaleString()}, delay=${now - payload.timestamp}ms` : ""}`
-                    )
-
                     const baseUrl = stages[stage].baseUrl
 
                     const privateKey = await getPrivateKey()
                     const deviceId = await getDeviceId()
 
+                    // TODO: return timestamp from this fetch method
                     await fetch(`${baseUrl}/pong`, {
                         method: "POST",
                         mode: "cors",
@@ -150,6 +147,13 @@ scope.addEventListener("push", (event: PushEvent) => {
                     if (payload.timestamp) {
                         setLastHeartbeat(payload.timestamp)
                     }
+
+                    const now = Date.now()
+
+                    await showNotification(
+                        "Heartbeat",
+                        `${stage}${payload.timestamp ? `, timestamp=${new Date(payload.timestamp).toLocaleString()}, delay=${now - payload.timestamp}ms` : ""}`
+                    )
                 }
             } else if (stage) {
                 await signFeed(stage)

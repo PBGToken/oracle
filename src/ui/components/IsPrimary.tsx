@@ -37,7 +37,7 @@ function LastHeartbeat() {
     const hb = useLastHeartbeat()
     return (
         <StyledLastHeartbeat>
-            Last heartbeat: {hb == 0 ? "never" : hb.toString()}
+            Last heartbeat: {hb == 0 ? "never" : new Date(hb).toLocaleString()}
         </StyledLastHeartbeat>
     )
 }

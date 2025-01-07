@@ -14,6 +14,10 @@ Activate web push notifications in Safari dev settings
 
 ## Android
 
+Prefer Firefox (it seems that Mobile Google Chrome sometimes creates Web Push API endpoints that aren't valid)
+
+How to overcome unacknowledged notification limit? (seems to be around 50, after which the service worker can no longer run???)
+
 ### Android 12
 
 Disable battery optimization: Settings > Apps > See all # apps > Browser used for PWA > Battery > Select "Unrestricted"

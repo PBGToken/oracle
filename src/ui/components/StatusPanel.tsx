@@ -1,5 +1,6 @@
 import styled from "styled-components"
 import {
+    useDeviceId,
     useIsAuthorized,
     useIsSubscribed,
     useNotificationPermission,
@@ -10,6 +11,7 @@ import { hexToBytes } from "@helios-lang/codec-utils"
 import { Button } from "./Button"
 import { ErrorMessage } from "./ErrorMessage"
 import { IsPrimary } from "./IsPrimary"
+import { Shorten } from "./Shorten"
 
 const borderRadius = 5
 
@@ -20,6 +22,7 @@ type StatusProps = {
 
 export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
     const [privateKey] = usePrivateKey()
+    const [deviceId] = useDeviceId()
 
     const isSubscribed = useIsSubscribed()
     const [granted, grant, error] = useNotificationPermission()
@@ -45,7 +48,11 @@ export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
             {!granted && <Button onClick={grant}>Enable Notifications</Button>}
             {error && <ErrorMessage>{error}</ErrorMessage>}
             <IsPrimary />
-            <p>Key: {pubKeyHash == "" ? "unset" : pubKeyHash}</p>
+            <p>
+                Key:{" "}
+                {pubKeyHash == "" ? "unset" : <Shorten value={pubKeyHash} />}
+            </p>
+            <p>Device ID: {deviceId ? deviceId.toString() : "unset"}</p>
             <IsAuthorized />
             <p>{isSubscribed ? "Subscribed" : "Not subscribed"}</p>
             <Button onClick={onChangeKey}>

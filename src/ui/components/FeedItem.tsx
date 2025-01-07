@@ -1,5 +1,6 @@
 import styled from "styled-components"
 import { FeedEvent, formatPrices } from "../../worker/FeedEvent"
+import { Shorten } from "./Shorten"
 
 type FeedItemProps = {
     event: FeedEvent
@@ -12,7 +13,9 @@ export function FeedItem({ event }: FeedItemProps) {
                 {event.stage ?? "Mainnet"}
                 {event.error ? `, not signed (${event.error})` : ""}
             </p>
-            <p>{event.hash}</p>
+            <p>
+                Tx ID: <Shorten value={event.hash} />
+            </p>
             <p>{new Date(event.timestamp).toLocaleString()}</p>
             <p>{formatPrices(event.prices ?? {})}</p>
         </StyledFeedItem>
