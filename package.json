@@ -23,7 +23,7 @@
         "@helios-lang/cbor": "^0.2.2",
         "@helios-lang/codec-utils": "^0.3.1",
         "@helios-lang/ledger": "^0.6.13",
-        "@helios-lang/minswap": "^0.1.8",
+        "@helios-lang/minswap": "^0.1.9",
         "@helios-lang/tx-utils": "^0.3.15",
         "@helios-lang/type-utils": "^0.2.8",
         "@helios-lang/uplc": "^0.7.8",
