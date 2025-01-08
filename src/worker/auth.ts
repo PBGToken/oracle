@@ -98,13 +98,17 @@ export async function createSubscription(): Promise<void> {
 
         await setSubscription(subscription)
 
+        // this is a fresh subscription, so if this fails there is no point in retrying
         await syncSubscription(subscription)
     } catch (e) {
         console.error(e)
     }
 }
 
-export async function syncSubscription(subscription: string) {
+// throws an error if any subscriptions calls failed, in which the caller might retry generation the subscription endpoint
+export async function syncSubscription(subscription: string): Promise<void> {
+    let fetchFailed = false
+
     try {
         const privateKey = await getPrivateKey()
 
@@ -119,22 +123,34 @@ export async function syncSubscription(subscription: string) {
         for (let stageName of STAGE_NAMES) {
             const baseUrl = stages[stageName].baseUrl
 
-            const response = await fetch(`${baseUrl}/subscribe`, {
-                method: "POST",
-                mode: "cors",
-                headers: {
-                    Authorization: createAuthToken(privateKey, deviceId)
-                },
-                body: JSON.stringify({ subscription, isPrimary })
-            })
+            try {
+                const response = await fetch(`${baseUrl}/subscribe`, {
+                    method: "POST",
+                    mode: "cors",
+                    headers: {
+                        Authorization: createAuthToken(privateKey, deviceId)
+                    },
+                    body: JSON.stringify({ subscription, isPrimary })
+                })
 
-            if (!response.ok) {
-                console.log(
-                    `Failed to subscribe to ${stageName} push notifications: ${response.statusText}`
-                )
+                if (!response.ok) {
+                    console.log(
+                        `Failed to subscribe to ${stageName} push notifications: ${response.statusText}`
+                    )
+                    fetchFailed = true
+                }
+            } catch (e) {
+                console.error(e)
+                fetchFailed = true
             }
         }
     } catch (e) {
         console.error(e)
+    }
+
+    if (fetchFailed) {
+        throw new Error(
+            "subscription failed, the subscription data might be stale"
+        )
     }
 }

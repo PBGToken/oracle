@@ -134,8 +134,7 @@ scope.addEventListener("push", (event: PushEvent) => {
                     const privateKey = await getPrivateKey()
                     const deviceId = await getDeviceId()
 
-                    // TODO: return timestamp from this fetch method
-                    await fetch(`${baseUrl}/pong`, {
+                    const resp = await fetch(`${baseUrl}/pong`, {
                         method: "POST",
                         mode: "cors",
                         headers: {
@@ -144,15 +143,26 @@ scope.addEventListener("push", (event: PushEvent) => {
                         body: JSON.stringify({})
                     })
 
+                    const maybeDiff = resp.ok ? await resp.json() : undefined
+
                     if (payload.timestamp) {
                         setLastHeartbeat(payload.timestamp)
                     }
 
-                    const now = Date.now()
+                    let diff: undefined | number =
+                        typeof maybeDiff == "number" && maybeDiff > 0
+                            ? maybeDiff
+                            : payload.timestamp
+                              ? Date.now() - payload.timestamp
+                              : undefined
+
+                    if (diff && diff < 0) {
+                        diff = 0
+                    }
 
                     await showNotification(
                         "Heartbeat",
-                        `${stage}${payload.timestamp ? `, timestamp=${new Date(payload.timestamp).toLocaleString()}, delay=${now - payload.timestamp}ms` : ""}`
+                        `${stage}${payload ? `, timestamp=${new Date(payload.timestamp).toLocaleTimeString()} ${new Date(payload.timestamp).toLocaleDateString()}` : ""}${diff ? `, delay=${diff}ms` : ""}`
                     )
                 }
             } else if (stage) {
@@ -178,10 +188,17 @@ async function sync(): Promise<void> {
     let subscription = await getSubscription()
 
     if (subscription && (await isValidSubscription(subscription))) {
-        await syncSubscription(subscription)
-    } else {
-        await createSubscription()
+        // the subscription data might be stale, in which it is worthwhile to retry
+        try {
+            await syncSubscription(subscription)
+
+            return
+        } catch (_e) {
+            // fallthrough and create a fresh subscription
+        }
     }
+
+    await createSubscription()
 }
 
 async function isValidSubscription(subscription: string): Promise<boolean> {
