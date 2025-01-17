@@ -216,7 +216,8 @@ async function verifyPrices(
 
             const [priceNum, priceDen] = expectListData(priceData).items
 
-            const price = Number(priceNum) / Number(priceDen)
+            // lovelace per (decimal-free) asset
+            const priceWithoutDecimals = Number(priceNum) / Number(priceDen)
 
             const priceTimestamp = Number(
                 expectIntData(priceTimeStampData).value
@@ -226,6 +227,8 @@ async function verifyPrices(
                 cardanoClient,
                 assetClass
             )
+
+            const price = priceWithoutDecimals/Math.pow(10, 6 - decimals)
 
             prices[name] = price // set this for debugging purposes
 
