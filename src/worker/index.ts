@@ -199,12 +199,14 @@ async function sync(): Promise<void> {
     // we have to make sure we are still authorized
     await authorizeAllStages()
 
-    let subscription = await getSubscription()
+    const subscription = await getSubscription()
 
     if (subscription && (await isValidSubscription(subscription))) {
         // the subscription data might be stale, in which it is worthwhile to retry
         try {
             await syncSubscription(subscription)
+
+            await setLastSync(Date.now())
 
             return
         } catch (_e) {
