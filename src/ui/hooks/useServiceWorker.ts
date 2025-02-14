@@ -94,6 +94,7 @@ export function fetchWorker(
         | "isSubscribed"
         | "isPrimary"
         | "lastHeartbeat"
+        | "lastSync"
         | "notificationsGranted"
         | "privateKey"
         | "status"
@@ -112,6 +113,7 @@ export function fetchWorker(
         | "isSubscribed"
         | "isPrimary"
         | "lastHeartbeat"
+        | "lastSync"
         | "notificationsGranted"
         | "privateKey"
         | "status",

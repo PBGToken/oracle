@@ -1,30 +1,25 @@
 import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { type StageName } from "src/worker/stages"
 import { fetchWorker } from "./useServiceWorker"
 
-const QUERY_KEY = "lastHeartbeat"
+const QUERY_KEY = "lastSync"
 
-export function useLastHeartbeat(): Record<StageName, number> {
+export function useLastSync(): number {
     const data = useQuery({
         queryKey: [QUERY_KEY],
         refetchInterval: 1000,
         queryFn: async () => {
-            const hb: Record<StageName, number> = await fetchWorker("get", "lastHeartbeat")
+            const hb: number = await fetchWorker("get", "lastSync")
 
             return hb
         }
-    }).data;
+    }).data
 
     return useMemo(() => {
         if (data) {
             return data
         } else {
-            return {
-                Mainnet: 0,
-                Preprod: 0,
-                Beta: 0
-            }
+            return 0
         }
     }, [data])
 }

@@ -81,12 +81,24 @@ export function setIsPrimary(primary: boolean): Promise<void> {
     return setConfig("isPrimary", primary)
 }
 
-export function getLastHeartbeat(): Promise<number> {
-    return getConfig("lastHeartbeat", 0)
+export async function getLastHeartbeat(): Promise<Record<StageName, number>> {
+    return {
+        Mainnet: await getConfig("lastHeartbeat-Mainnet", 0),
+        Beta: await getConfig("lastHeartbeat-Beta", 0),
+        Preprod: await getConfig("lastHeartbeat-Preprod", 0)
+    }
 }
 
-export function setLastHeartbeat(hb: number): Promise<void> {
-    return setConfig("lastHeartbeat", hb)
+export async function setLastHeartbeat(stage: StageName, hb: number): Promise<void> {
+    return setConfig(`lastHeartbeat-${stage}`, hb)
+}
+
+export function getLastSync(): Promise<number> {
+    return getConfig("lastSync", 0)
+}
+
+export function setLastSync(t: number): Promise<void> {
+    return setConfig("lastSync", t)
 }
 
 export function getPrivateKey(): Promise<string> {

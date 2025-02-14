@@ -10,6 +10,7 @@ import {
     getDeviceId,
     getIsPrimary,
     getLastHeartbeat,
+    getLastSync,
     getPrivateKey,
     getSubscription,
     listEvents,
@@ -17,6 +18,7 @@ import {
     setDeviceId,
     setIsPrimary,
     setLastHeartbeat,
+    setLastSync,
     setPrivateKey
 } from "./db"
 import { showNotification, signFeed } from "./feed"
@@ -73,6 +75,9 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                                 break
                             case "lastHeartbeat":
                                 handleSuccess(await getLastHeartbeat())
+                                break
+                            case "lastSync":
+                                handleSuccess(await getLastSync())
                                 break
                             case "notificationsGranted":
                                 handleSuccess(getNotificationsGranted())
@@ -146,7 +151,7 @@ scope.addEventListener("push", (event: PushEvent) => {
                     const maybeDiff = resp.ok ? await resp.json() : undefined
 
                     if (payload.timestamp) {
-                        setLastHeartbeat(payload.timestamp)
+                        await setLastHeartbeat(stage, payload.timestamp)
                     }
 
                     let diff: undefined | number =
@@ -176,11 +181,20 @@ scope.addEventListener("pushsubscriptionchange", async (_event: Event) => {
     await createSubscription()
 })
 
+scope.addEventListener("sync", async (_event: Event) => {
+    const ls = await getLastSync()
+
+    // don't sync more often than every 5 minutes
+    if (Date.now() - ls > 300_000) {
+        await sync()
+    }
+})
+
 function getNotificationsGranted(): boolean {
     return "Notification" in self && Notification.permission == "granted"
 }
 
-// this function is triggered when the page reloads
+// this function is triggered when the page reloads and by the "sync" event
 async function sync(): Promise<void> {
     // we have to make sure we are still authorized
     await authorizeAllStages()
@@ -199,6 +213,8 @@ async function sync(): Promise<void> {
     }
 
     await createSubscription()
+
+    await setLastSync(Date.now())
 }
 
 async function isValidSubscription(subscription: string): Promise<boolean> {

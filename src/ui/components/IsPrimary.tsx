@@ -1,6 +1,6 @@
 import { type ChangeEvent } from "react"
 import styled from "styled-components"
-import { useIsPrimary, useLastHeartbeat } from "../hooks"
+import { useIsPrimary, useLastHeartbeat, useLastSync } from "../hooks"
 
 export function IsPrimary() {
     // useState hook for managing the checkbox state
@@ -35,10 +35,23 @@ const StyledIsPrimary = styled.div`
 
 function LastHeartbeat() {
     const hb = useLastHeartbeat()
+    const ls = useLastSync()
+
     return (
-        <StyledLastHeartbeat>
-            Last heartbeat: {hb == 0 ? "never" : new Date(hb).toLocaleString()}
-        </StyledLastHeartbeat>
+        <div>
+            <StyledLastHeartbeat>
+                Last subscription sync : {ls == 0 ? "never" : new Date(ls).toLocaleString()}
+            </StyledLastHeartbeat>
+            <StyledLastHeartbeat>
+                Last Mainnet heartbeat: {hb.Mainnet == 0 ? "never" : new Date(hb.Mainnet).toLocaleString()}
+            </StyledLastHeartbeat>
+            <StyledLastHeartbeat>
+                Last Beta heartbeat: {hb.Beta == 0 ? "never" : new Date(hb.Beta).toLocaleString()}
+            </StyledLastHeartbeat>
+            <StyledLastHeartbeat>
+                Last Preprod heartbeat: {hb.Preprod == 0 ? "never" : new Date(hb.Preprod).toLocaleString()}
+            </StyledLastHeartbeat>
+        </div>
     )
 }
 
