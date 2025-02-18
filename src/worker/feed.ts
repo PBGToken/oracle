@@ -123,33 +123,29 @@ async function fetchPriceFeed(
     deviceId: number
 ): Promise<Tx | undefined> {
     if (!isValidStageName(stage)) {
-        return undefined
+        throw new Error(`invalid stage name ${stage}`)
     }
 
-    try {
-        const baseUrl = stages[stage].baseUrl
-        const response = await fetch(`${baseUrl}/feed`, {
-            method: "GET",
-            mode: "cors",
-            headers: {
-                Authorization: createAuthToken(privateKey, deviceId)
-            }
-        })
+    const baseUrl = stages[stage].baseUrl
 
-        if (response.status >= 200 && response.status < 300) {
-            const text = await response.text()
-            const obj = JSON.parse(text)
+    const response = await fetch(`${baseUrl}/feed`, {
+        method: "GET",
+        mode: "cors",
+        headers: {
+            Authorization: createAuthToken(privateKey, deviceId)
+        }
+    })
 
-            if ("tx" in obj && typeof obj.tx == "string") {
-                return decodeTx(obj.tx)
-            } else {
-                return undefined
-            }
+    if (response.ok) {
+        const text = await response.text()
+        const obj = JSON.parse(text)
+
+        if ("tx" in obj && typeof obj.tx == "string") {
+            return decodeTx(obj.tx)
         } else {
             return undefined
         }
-    } catch (e) {
-        console.error(e)
+    } else {
         return undefined
     }
 }
