@@ -1,4 +1,5 @@
 import styled from "styled-components"
+import Bowser from "bowser"
 import {
     useDeviceId,
     useIsAuthorized,
@@ -19,6 +20,8 @@ type StatusProps = {
     serviceWorkerStatus: string
     onChangeKey: () => void
 }
+
+const browser = Bowser.getParser(window.navigator.userAgent)
 
 export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
     const [privateKey] = usePrivateKey()
@@ -55,6 +58,8 @@ export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
             <p>Device ID: {deviceId ? deviceId.toString() : "unset"}</p>
             <IsAuthorized />
             <p>{isSubscribed ? "Subscribed" : "Not subscribed"}</p>
+            <p>OS: {browser.getOSName()}</p>
+            <p>Browser: {browser.getBrowserName()}</p>
             <Button onClick={onChangeKey}>
                 {privateKey == "" ? "Set Key" : "Change Key"}
             </Button>
