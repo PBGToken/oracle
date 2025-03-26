@@ -2,7 +2,7 @@
     "name": "multi-sig-oracle-client",
     "version": "1.0.21",
     "scripts": {
-        "build": "npm run build:preload-db && npm run build:worker && npm run build:ui",
+        "build": "npm run prettify && npm run test:types && npm run build:preload-db && npm run build:worker && npm run build:ui",
         "build:preload-db": "node esbuild.preload-db.js",
         "build:ui": "NODE_ENV=development npx vite build -c vite.config.js",
         "build:worker": "node esbuild.worker.js",
@@ -22,6 +22,7 @@
     "devDependencies": {
         "@helios-lang/cbor": "^0.3.0",
         "@helios-lang/codec-utils": "^0.3.4",
+        "@helios-lang/crypto": "^0.2.3",
         "@helios-lang/ledger": "^0.7.1",
         "@helios-lang/minswap": "^0.2.1",
         "@helios-lang/tx-utils": "^0.6.1",

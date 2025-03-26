@@ -89,7 +89,10 @@ export async function getLastHeartbeat(): Promise<Record<StageName, number>> {
     }
 }
 
-export async function setLastHeartbeat(stage: StageName, hb: number): Promise<void> {
+export async function setLastHeartbeat(
+    stage: StageName,
+    hb: number
+): Promise<void> {
     return setConfig(`lastHeartbeat-${stage}`, hb)
 }
 

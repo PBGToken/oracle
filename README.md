@@ -21,6 +21,7 @@ How to overcome unacknowledged notification limit? (seems to be around 50, after
 Use Firefox Nightly for Developers, and in about:config set dom.push.maxQuotaPerSubscription to 2000000000 (2 billion)
 
 This way, once the notifications saturate, the push messages keep arriving to the service worker.
+
 ### Android 12
 
 Disable battery optimization: Settings > Apps > See all # apps > Browser used for PWA > Battery > Select "Unrestricted"

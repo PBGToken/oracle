@@ -10,11 +10,14 @@ export function useLastHeartbeat(): Record<StageName, number> {
         queryKey: [QUERY_KEY],
         refetchInterval: 1000,
         queryFn: async () => {
-            const hb: Record<StageName, number> = await fetchWorker("get", "lastHeartbeat")
+            const hb: Record<StageName, number> = await fetchWorker(
+                "get",
+                "lastHeartbeat"
+            )
 
             return hb
         }
-    }).data;
+    }).data
 
     return useMemo(() => {
         if (data) {

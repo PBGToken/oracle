@@ -224,7 +224,7 @@ async function verifyPrices(
                 assetClass
             )
 
-            const price = priceWithoutDecimals/Math.pow(10, 6 - decimals)
+            const price = priceWithoutDecimals / Math.pow(10, 6 - decimals)
 
             prices[name] = price // set this for debugging purposes
 

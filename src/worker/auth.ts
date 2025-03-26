@@ -1,4 +1,11 @@
-import { makeBase64 } from "@helios-lang/codec-utils"
+import {
+    bytesToHex,
+    decodeIntBE,
+    encodeIntBE,
+    hexToBytes,
+    makeBase64
+} from "@helios-lang/codec-utils"
+import { SchnorrSecp256k1 } from "@helios-lang/crypto"
 import {
     getDeviceId,
     getIsPrimary,
@@ -105,6 +112,23 @@ export async function createSubscription(): Promise<void> {
     }
 }
 
+function convertEd25519ToSchnorrPrivateKey(privateKey: string): number[] {
+    const s =
+        decodeIntBE(hexToBytes(privateKey)) %
+        115792089237316195423570985008687907852837564279074904382605163141518161494337n
+
+    return encodeIntBE(s)
+}
+
+// derive Schnorr public key from Ed25519 private key
+function deriveSchnorrPublicKey(privateKey: string): string {
+    return bytesToHex(
+        SchnorrSecp256k1.derivePublicKey(
+            convertEd25519ToSchnorrPrivateKey(privateKey)
+        )
+    )
+}
+
 // throws an error if any subscriptions calls failed, in which the caller might retry generation the subscription endpoint
 export async function syncSubscription(subscription: string): Promise<void> {
     let fetchFailed = false
@@ -120,6 +144,8 @@ export async function syncSubscription(subscription: string): Promise<void> {
 
         const isPrimary = await getIsPrimary()
 
+        const schnorrSecp256k1PublicKey = deriveSchnorrPublicKey(privateKey)
+
         for (let stageName of STAGE_NAMES) {
             const baseUrl = stages[stageName].baseUrl
 
@@ -130,7 +156,11 @@ export async function syncSubscription(subscription: string): Promise<void> {
                     headers: {
                         Authorization: createAuthToken(privateKey, deviceId)
                     },
-                    body: JSON.stringify({ subscription, isPrimary })
+                    body: JSON.stringify({
+                        subscription,
+                        isPrimary,
+                        schnorrSecp256k1PublicKey
+                    })
                 })
 
                 if (!response.ok) {

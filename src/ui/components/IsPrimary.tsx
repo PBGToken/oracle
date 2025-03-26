@@ -40,16 +40,24 @@ function LastHeartbeat() {
     return (
         <div>
             <StyledLastHeartbeat>
-                Last subscription sync : {ls == 0 ? "never" : new Date(ls).toLocaleString()}
+                Last subscription sync :{" "}
+                {ls == 0 ? "never" : new Date(ls).toLocaleString()}
             </StyledLastHeartbeat>
             <StyledLastHeartbeat>
-                Last Mainnet heartbeat: {hb.Mainnet == 0 ? "never" : new Date(hb.Mainnet).toLocaleString()}
+                Last Mainnet heartbeat:{" "}
+                {hb.Mainnet == 0
+                    ? "never"
+                    : new Date(hb.Mainnet).toLocaleString()}
             </StyledLastHeartbeat>
             <StyledLastHeartbeat>
-                Last Beta heartbeat: {hb.Beta == 0 ? "never" : new Date(hb.Beta).toLocaleString()}
+                Last Beta heartbeat:{" "}
+                {hb.Beta == 0 ? "never" : new Date(hb.Beta).toLocaleString()}
             </StyledLastHeartbeat>
             <StyledLastHeartbeat>
-                Last Preprod heartbeat: {hb.Preprod == 0 ? "never" : new Date(hb.Preprod).toLocaleString()}
+                Last Preprod heartbeat:{" "}
+                {hb.Preprod == 0
+                    ? "never"
+                    : new Date(hb.Preprod).toLocaleString()}
             </StyledLastHeartbeat>
         </div>
     )
