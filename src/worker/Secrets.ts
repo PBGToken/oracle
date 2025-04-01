@@ -9,6 +9,8 @@ export type Secrets = {
     blockfrostApiKey: string
     demeterUtxoRpcApiKey?: string
     demeterUtxoRpcHost?: string
+    infuraRpcApiKey?: string // for ethereum mainnet
+    infuraRpcApiSecret?: string // for ethereum mainnet
 }
 
 // undefined return value signifies unauthorized

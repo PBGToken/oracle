@@ -5,7 +5,7 @@ import {
     hexToBytes,
     makeBase64
 } from "@helios-lang/codec-utils"
-import { SchnorrSecp256k1 } from "@helios-lang/crypto"
+import { ECDSASecp256k1, SchnorrSecp256k1 } from "@helios-lang/crypto"
 import {
     getDeviceId,
     getIsPrimary,
@@ -112,19 +112,39 @@ export async function createSubscription(): Promise<void> {
     }
 }
 
-function convertEd25519ToSchnorrPrivateKey(privateKey: string): number[] {
+// Both Bitcoin and Ethereum use Secp256k1 private keys
+function deriveSecp256k1PrivateKey(privateKey: string): string {
     const s =
         decodeIntBE(hexToBytes(privateKey)) %
         115792089237316195423570985008687907852837564279074904382605163141518161494337n
 
-    return encodeIntBE(s)
+    return bytesToHex(encodeIntBE(s))
+}
+
+export function deriveSchnorrPrivateKey(privateKey: string): string {
+    return deriveSecp256k1PrivateKey(privateKey)
+}
+
+export function deriveECDSAPrivateKey(privateKey: string): string {
+    return deriveSecp256k1PrivateKey(privateKey)
 }
 
 // derive Schnorr public key from Ed25519 private key
+// Schnorr is used by Bitcoin
 function deriveSchnorrPublicKey(privateKey: string): string {
     return bytesToHex(
         SchnorrSecp256k1.derivePublicKey(
-            convertEd25519ToSchnorrPrivateKey(privateKey)
+            hexToBytes(deriveSecp256k1PrivateKey(privateKey))
+        )
+    )
+}
+
+// Derive ECDSA public key from Ed25519 private key
+// ECDSA is used by Ethereum
+function deriveECDSAPublicKey(privateKey: string): string {
+    return bytesToHex(
+        ECDSASecp256k1.derivePublicKey(
+            hexToBytes(deriveSecp256k1PrivateKey(privateKey))
         )
     )
 }
@@ -145,6 +165,7 @@ export async function syncSubscription(subscription: string): Promise<void> {
         const isPrimary = await getIsPrimary()
 
         const schnorrSecp256k1PublicKey = deriveSchnorrPublicKey(privateKey)
+        const ecdsaSecp256k1PublicKey = deriveECDSAPublicKey(privateKey)
 
         for (let stageName of STAGE_NAMES) {
             const baseUrl = stages[stageName].baseUrl
@@ -159,7 +180,8 @@ export async function syncSubscription(subscription: string): Promise<void> {
                     body: JSON.stringify({
                         subscription,
                         isPrimary,
-                        schnorrSecp256k1PublicKey
+                        schnorrSecp256k1PublicKey,
+                        ecdsaSecp256k1PublicKey
                     })
                 })
 

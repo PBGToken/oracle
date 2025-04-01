@@ -17,14 +17,11 @@ import {
     openDatabase,
     setDeviceId,
     setIsPrimary,
-    setLastHeartbeat,
     setLastSync,
     setPrivateKey
 } from "./db"
-import { showNotification, signFeed } from "./feed"
+import { handleFeed } from "./feed"
 import { scope } from "./scope"
-import { createAuthToken } from "./Secrets"
-import { isValidStageName, stages } from "./stages"
 
 scope.addEventListener("activate", (event: ExtendableEvent) => {
     event.waitUntil(
@@ -129,50 +126,12 @@ scope.addEventListener("push", (event: PushEvent) => {
     const payload = event.data ? event.data.json() : {}
     const stage: string = payload.stage
     const heartbeat: boolean = !!payload.heartbeat
+    const timestamp: number | undefined = payload.timestamp
+    const bridgeWithdrawal: any | undefined = payload.bridgeWithdrawal
 
     event.waitUntil(
         (async () => {
-            if (heartbeat) {
-                if ((await getIsPrimary()) && isValidStageName(stage)) {
-                    const baseUrl = stages[stage].baseUrl
-
-                    const privateKey = await getPrivateKey()
-                    const deviceId = await getDeviceId()
-
-                    const resp = await fetch(`${baseUrl}/pong`, {
-                        method: "POST",
-                        mode: "cors",
-                        headers: {
-                            Authorization: createAuthToken(privateKey, deviceId)
-                        },
-                        body: JSON.stringify({})
-                    })
-
-                    const maybeDiff = resp.ok ? await resp.json() : undefined
-
-                    if (payload.timestamp) {
-                        await setLastHeartbeat(stage, payload.timestamp)
-                    }
-
-                    let diff: undefined | number =
-                        typeof maybeDiff == "number" && maybeDiff > 0
-                            ? maybeDiff
-                            : payload.timestamp
-                              ? Date.now() - payload.timestamp
-                              : undefined
-
-                    if (diff && diff < 0) {
-                        diff = 0
-                    }
-
-                    await showNotification(
-                        "Heartbeat",
-                        `${stage}${payload ? `, timestamp=${new Date(payload.timestamp).toLocaleTimeString()} ${new Date(payload.timestamp).toLocaleDateString()}` : ""}${diff ? `, delay=${diff}ms` : ""}`
-                    )
-                }
-            } else if (stage) {
-                await signFeed(stage)
-            } // if the payload is malformed then ignore it
+            await handleFeed(stage, heartbeat, timestamp, bridgeWithdrawal)
         })()
     )
 })
