@@ -13,12 +13,12 @@ import {
     convertUplcDataToAssetClass,
     makeAssetClass,
     AssetClass,
-    makeMintingPolicyHash,
-    makeValidatorHash,
-    ScriptHash,
-    TxOutput,
-    TxInput,
-    ADA,
+    //makeMintingPolicyHash,
+    //makeValidatorHash,
+    //ScriptHash,
+    //TxOutput,
+    //TxInput,
+    //ADA,
     makeTxId,
     TxId
 } from "@helios-lang/ledger"
@@ -34,16 +34,16 @@ import {
     expectConstrData,
     expectIntData,
     expectListData,
-    expectMapData,
-    UplcData
+    expectMapData
+    //UplcData
 } from "@helios-lang/uplc"
-import {
-    Contract as EthContract,
-    Interface as EthContractInterface,
-    InfuraProvider,
-    Network
-} from "ethers"
-import { createSafeClient, SafeClient } from "@safe-global/sdk-starter-kit"
+//import {
+//    Contract as EthContract,
+//    Interface as EthContractInterface,
+//    InfuraProvider,
+//    Network
+//} from "ethers"
+//import { createSafeClient, SafeClient } from "@safe-global/sdk-starter-kit"
 import {
     appendEvent,
     getDeviceId,
@@ -61,8 +61,7 @@ import {
     StageName,
     stages
 } from "./stages"
-import {} from "ethers"
-import { deriveECDSAPrivateKey } from "./auth"
+//import { deriveECDSAPrivateKey } from "./auth"
 
 const MAX_REL_DIFF = 0.01 // 1%
 
@@ -141,38 +140,38 @@ async function handleHeartbeat(
 //   - a bridge metadata change (TODO)
 async function handleSign(
     stage: StageName,
-    bridgeWithdrawal: any | undefined
+    _bridgeWithdrawal: any | undefined
 ): Promise<void> {
-    if (bridgeWithdrawal) {
-        await handleSignBridgeWithdrawal(stage, bridgeWithdrawal)
-    } else {
-        const privateKey = await getPrivateKey()
-        const deviceId = await getDeviceId()
+    //if (bridgeWithdrawal) {
+    //    await handleSignBridgeWithdrawal(stage, bridgeWithdrawal)
+    //} else {
+    const privateKey = await getPrivateKey()
+    const deviceId = await getDeviceId()
 
-        const tx = await fetchPriceFeed(stage, privateKey, deviceId)
+    const tx = await fetchPriceFeed(stage, privateKey, deviceId)
 
-        if (!tx) {
-            throw new Error("unable to fetch Tx from API")
-        }
-
-        if (tx.body.minted.isZero()) {
-            await handleSignDVPPriceUpdate(stage, tx)
-        } else {
-            await handleSignBridgeMint(stage, tx)
-        }
+    if (!tx) {
+        throw new Error("unable to fetch Tx from API")
     }
+
+    //if (tx.body.minted.isZero()) {
+    await handleSignDVPPriceUpdate(stage, tx)
+    //} else {
+    //await handleSignBridgeMint(stage, tx)
+    //}
+    //}
 }
 
-const BRIDGE_REGISTRATION_POLICY = makeMintingPolicyHash("")
+/*const BRIDGE_REGISTRATION_POLICY = makeMintingPolicyHash("")
 
 type BridgeRegistration = {
     reservesNetwork: string
     reservesAddress: string
     bridgeValidator: ScriptHash
     timestamp: number
-}
+}*/
 
-function extractBridgeRegistration(
+/*function extractBridgeRegistration(
     utxo: TxOutput | TxInput
 ): BridgeRegistration {
     const rawDatum = expectDefined(
@@ -192,9 +191,9 @@ function extractBridgeRegistration(
         bridgeValidator: makeMintingPolicyHash(rawBridgeValidator.bytes),
         timestamp: Number(rawTimestamp.value)
     }
-}
+}*/
 
-async function getOldestBridgeRegistration(
+/*async function getOldestBridgeRegistration(
     cardanoClient: BlockfrostV0Client,
     policy: string
 ): Promise<BridgeRegistration> {
@@ -230,15 +229,15 @@ async function getOldestBridgeRegistration(
     }
 
     return registration
-}
+}*/
 
-type BridgeState = {
+/*type BridgeState = {
     tokenPrice: number // number of reserves per token
     tokenSupply: bigint
     totalTokenValue: bigint // equivalent reserves value of all tokens in circulation (e.g. 100 BTC)
-}
+}*/
 
-function extractBridgeState(utxo: TxOutput | TxInput): BridgeState {
+/*function extractBridgeState(utxo: TxOutput | TxInput): BridgeState {
     const rawDatum = expectDefined(
         utxo.datum?.data,
         "registration datum undefined"
@@ -257,9 +256,9 @@ function extractBridgeState(utxo: TxOutput | TxInput): BridgeState {
         tokenSupply: rawTokenSupply.value,
         totalTokenValue: rawTotalTokenValue.value
     }
-}
+}*/
 
-async function getBridgeState(
+/*async function getBridgeState(
     cardanoClient: BlockfrostV0Client,
     policy: string
 ): Promise<BridgeState> {
@@ -286,10 +285,10 @@ async function getBridgeState(
     }
 
     return extractBridgeState(utxos[0])
-}
+}*/
 
 // TODO: fill with other details
-type BridgeMetadata = {
+/*type BridgeMetadata = {
     name: string
     description: string
     decimals: number
@@ -297,9 +296,9 @@ type BridgeMetadata = {
     network: string
     networkAssetClass: string
     networkReservesAddress: string
-}
+}*/
 
-function extractBridgeMetadata(utxo: TxInput | TxOutput): BridgeMetadata {
+/*function extractBridgeMetadata(utxo: TxInput | TxOutput): BridgeMetadata {
     const rawDatum = expectDefined(utxo.datum?.data)
 
     const rawMap = expectMapData(expectConstrData(rawDatum, 0, 3).fields[0])
@@ -337,9 +336,9 @@ function extractBridgeMetadata(utxo: TxInput | TxOutput): BridgeMetadata {
         networkAssetClass,
         networkReservesAddress
     }
-}
+}*/
 
-async function getBridgeMetadata(
+/*async function getBridgeMetadata(
     cardanoClient: BlockfrostV0Client,
     policy: string
 ): Promise<BridgeMetadata> {
@@ -368,10 +367,10 @@ async function getBridgeMetadata(
     const metadata = extractBridgeMetadata(utxo)
 
     return metadata
-}
+}*/
 
 // TODO: can the metadata UTxO and the registration UTxO be merged?
-function assertMetadataCorrespondsToRegistration(
+/*function assertMetadataCorrespondsToRegistration(
     metadata: BridgeMetadata,
     registration: BridgeRegistration
 ): void {
@@ -386,9 +385,9 @@ function assertMetadataCorrespondsToRegistration(
             "metadata network reserves address doesn't correspond to registration reserves address"
         )
     }
-}
+}*/
 
-async function handleSignBridgeWithdrawal(
+/*async function handleSignBridgeWithdrawal(
     stage: StageName,
     rawBridgeWithdrawal: unknown
 ): Promise<void> {
@@ -426,9 +425,9 @@ async function handleSignBridgeWithdrawal(
                 `unhandled bridge network ${bridgeRegistration.reservesNetwork}`
             )
     }
-}
+}*/
 
-async function makeERC20Contract(
+/*async function makeERC20Contract(
     stage: StageName,
     policy: string
 ): Promise<EthContract> {
@@ -450,9 +449,9 @@ async function makeERC20Contract(
     ])
 
     return new EthContract(policy, erc20Interface, client)
-}
+}*/
 
-async function makeEthereumSafe(
+/*async function makeEthereumSafe(
     stage: StageName,
     reservesAddress: string
 ): Promise<SafeClient> {
@@ -472,9 +471,9 @@ async function makeEthereumSafe(
         signer: ecdsaPrivateKey,
         safeAddress: reservesAddress
     })
-}
+}*/
 
-async function handleSignEthereumBridgeWithdrawal(
+/*async function handleSignEthereumBridgeWithdrawal(
     stage: StageName,
     bridgeRegistration: BridgeRegistration,
     bridgeMetadata: BridgeMetadata,
@@ -549,9 +548,9 @@ async function handleSignEthereumBridgeWithdrawal(
         `${stage}, signed bridge mint`,
         `withdrew ${(Number(w) / Math.pow(10, decimalsNetwork)).toFixed(2)} ${bridgeMetadata.ticker}`
     )
-}
+}*/
 
-function expectBridgeWithdrawal(bw: any): BridgeWithdrawal {
+/*function expectBridgeWithdrawal(bw: any): BridgeWithdrawal {
     if (bw == null || typeof bw != "object") {
         throw new Error("undefined or not an object")
     }
@@ -573,9 +572,9 @@ function expectBridgeWithdrawal(bw: any): BridgeWithdrawal {
     }
 
     return bw
-}
+}*/
 
-async function handleSignBridgeMint(stage: StageName, tx: Tx): Promise<void> {
+/*async function handleSignBridgeMint(stage: StageName, tx: Tx): Promise<void> {
     const mintedAssetClasses = tx.body.minted.assetClasses.filter(
         (ac) => !ac.isEqual(ADA)
     )
@@ -670,7 +669,7 @@ async function handleSignBridgeMint(stage: StageName, tx: Tx): Promise<void> {
         `${stage}, signed bridge mint`,
         `minted ${(Number(qty) / Math.pow(10, bridgeMetadata.decimals)).toFixed(2)} ${bridgeMetadata.ticker}, R0=${(Number(oldState.totalTokenValue) / Math.pow(10, decimalsNetwork)).toFixed(2)} R1=${(Number(RNetwork) / Math.pow(10, decimalsNetwork)).toFixed(2)}`
     )
-}
+}*/
 
 async function signCardanoTx(stage: StageName, tx: Tx): Promise<TxId> {
     const privateKey = await getPrivateKey()
