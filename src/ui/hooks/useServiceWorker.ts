@@ -52,8 +52,8 @@ if ("serviceWorker" in navigator && "PushManager" in window) {
                 pendingMessage = pendingMessages.shift()
             }
         })
-        .catch(() => {
-            console.error("Failed to register Service Worker")
+        .catch((e) => {
+            console.error(`Failed to register Service Worker (${e})`)
         })
 }
 
