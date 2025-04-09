@@ -1,4 +1,4 @@
-name: Deploy Oracle PWA to GitHub Pages
+name: Deploy Oracle to GitHub Pages
 
 on:
     push:
@@ -23,8 +23,11 @@ jobs:
               with:
                   node-version: 20
 
+            - run: apt install -y google-android-platform-33-installer google-android-build-tools-33.0.1-installer
+            - run: cd ./pwa
             - run: npm install
-            - run: npm run build
+            - run: cd ../pwa
+            - run: ./build.sh
 
             - name: Upload artifacts
               uses: actions/upload-pages-artifact@v3

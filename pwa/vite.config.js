@@ -8,7 +8,7 @@ import { viteStaticCopy } from "vite-plugin-static-copy"
 const repoRoot = join(dirname(process.argv[1]), "../../")
 const srcDir = join(repoRoot, "./src/ui")
 const assetsDir = join(repoRoot, "./assets")
-const dstDir = join(repoRoot, "./dist")
+const dstDir = join(repoRoot, "../dist")
 
 const version = JSON.parse(readFileSync("./package.json").toString()).version
 

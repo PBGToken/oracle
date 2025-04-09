@@ -1,5 +1,5 @@
 {
-    "name": "multi-sig-oracle-client",
+    "name": "@pbg/oracle-pwa",
     "version": "1.0.25",
     "scripts": {
         "build": "npm run prettify && npm run test:types && npm run build:preload-db && npm run build:worker && npm run build:ui",

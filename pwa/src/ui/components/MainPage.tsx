@@ -23,6 +23,14 @@ export function MainPage() {
                         onChangeKey={() => setShowKeyInput(true)}
                     />
 
+                    <a
+                        href="./pbg_oracle.apk"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Install Android native
+                    </a>
+
                     <FeedPanel />
                 </>
             )}
