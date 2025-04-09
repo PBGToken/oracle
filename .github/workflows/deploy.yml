@@ -24,9 +24,7 @@ jobs:
                   node-version: 20
 
             - run: sudo apt-get install -y google-android-platform-33-installer google-android-build-tools-33.0.1-installer
-            - run: cd ./pwa
-            - run: npm install
-            - run: cd ../pwa
+            - run: npm install -C ./pwa
             - run: ./build.sh
 
             - name: Upload artifacts

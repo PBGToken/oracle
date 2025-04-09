@@ -1,11 +1,11 @@
 #!/bin/bash
 mkdir -p ./dist
 
-cd ./pwa
-npm run build
-cd ../
+# build page
+npm run build -C ./pwa
 
-cd ./android
-make
-cp ./pbg_oracle.apk ../dist/
+# build android native app
+make -C ./android
+cp ./android/pbg_oracle.apk ./dist/
 
+# TODO: build iOS app??
