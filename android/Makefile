@@ -8,7 +8,16 @@ CLASSES=$(patsubst %.java,%.class,$(wildcard $(APP)/*.java))
 # Resources:
 # https://www.hanshq.net/command-line-android.html
 
-$(NAME).apk: dex/classes.dex AndroidManifest.xml
+$(NAME).apk: $(NAME).aligned.apk keystore.jks
+	apksigner sign --ks keystore.jks --ks-key-alias androidkey --ks-pass pass:android --key-pass pass:android --out $@ $<
+
+keystore.jks:
+	keytool -genkeypair -noprompt -keystore $@ -alias androidkey -validity 10000 -keyalg RSA -keysize 2048 -storepass android -keypass android
+
+$(NAME).aligned.apk: $(NAME).unsigned.apk
+	zipalign -f -p 4 $< $@
+
+$(NAME).unsigned.apk: dex/classes.dex AndroidManifest.xml
 	aapt package -f -v -F $@ -I $(PLATFORM) -M AndroidManifest.xml -S res dex
 
 dex/classes.dex: $(CLASSES)

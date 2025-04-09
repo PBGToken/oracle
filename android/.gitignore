@@ -1,5 +1,5 @@
 *.apk
 *.class
 *.dex
-*.jks
 R.java
+*.idsig
