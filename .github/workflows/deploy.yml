@@ -23,7 +23,7 @@ jobs:
               with:
                   node-version: 20
 
-            - run: apt install -y google-android-platform-33-installer google-android-build-tools-33.0.1-installer
+            - run: sudo apt-get install -y google-android-platform-33-installer google-android-build-tools-33.0.1-installer
             - run: cd ./pwa
             - run: npm install
             - run: cd ../pwa

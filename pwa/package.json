@@ -1,6 +1,6 @@
 {
     "name": "@pbg/oracle-pwa",
-    "version": "1.0.25",
+    "version": "1.0.26",
     "scripts": {
         "build": "npm run prettify && npm run test:types && npm run build:preload-db && npm run build:worker && npm run build:ui",
         "build:preload-db": "node esbuild.preload-db.js",
