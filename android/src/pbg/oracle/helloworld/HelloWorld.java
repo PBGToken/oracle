@@ -11,9 +11,9 @@ public class HelloWorld extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-		String versionInfo = "hello world";//android.os.Build.VERSION.RELEASE_OR_PREVIEW_DISPLAY;
+		String sdkVersion = Integer.toString(android.os.Build.VERSION.SDK_INT);
 
         TextView text = (TextView)findViewById(R.id.my_text);
-        text.setText("SDK: " + versionInfo);
+        text.setText("SDK: " + sdkVersion);
     }
 }
