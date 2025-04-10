@@ -19,10 +19,23 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:id="@+id/battery_optimization"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:id="@+id/info_message"/>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/result"/>
+
+    <Button
+        android:id="@+id/buttonOpenSetKeyDialog"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Set key"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="20dp" />
 </LinearLayout>

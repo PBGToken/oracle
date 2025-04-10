@@ -1,9 +1,11 @@
 package pbg.oracle.app;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.PowerManager;
 import android.widget.TextView;
 
 public class App extends Activity {
@@ -32,6 +34,14 @@ public class App extends Activity {
 
         ((TextView)this.findViewById(R.id.app_version)).setText("App version: " + App.VERSION);
         App.setSDKVersion(Integer.toString(android.os.Build.VERSION.SDK_INT));
+
+        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        String batteryOptimization = "on";
+        if (powerManager.isIgnoringBatteryOptimizations(this.getPackageName())) {
+            batteryOptimization = "off";
+        }
+
+        ((TextView)this.findViewById(R.id.battery_optimization)).setText("Power restrictions: " + batteryOptimization);
     }
 
     public static void setInfoMessage(String message) {
