@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 
 public class Storage {
-    private const String DB_NAME = "MyPrefs";
+    private String DB_NAME = "MyPrefs";
     private Context context;
 
     Storage(Context context) {

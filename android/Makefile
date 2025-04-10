@@ -5,7 +5,7 @@ CLS=cls/pbg/oracle/app
 NAME=pbg_oracle
 
 CLASSES=$(patsubst $(APP)/%.java,$(CLS)/%.class,$(wildcard $(APP)/*.java))
-VERSION=$(git rev-parse --short HEAD)
+VERSION=$(shell git rev-parse --short HEAD)
 
 # Resources:
 # https://www.hanshq.net/command-line-android.html
@@ -26,10 +26,12 @@ dex/classes.dex: $(CLS)/App.class
 	[ -e dex ] || mkdir dex
 	d8 --output dex $(CLASSES)
 
-$(CLS)/App.class: $(APP)/*.java $(APP)/R.java
+$(CLS)/App.java: $(APP)/*.java $(APP)/R.java	
 	rm -fr cls
 	cp -r src cls
-	sed -i 's/\"development\"/\"${VERSION}\"/' $(CLS)/App.java
+	sed -i 's/\"development\"/\"$(VERSION)\"/' $(CLS)/App.java
+
+$(CLS)/App.class: $(CLS)/App.java $(CLS)/R.java
 	javac -bootclasspath $(PLATFORM) -classpath cls -source 8 -target 8 $^
 
 $(APP)/R.java: AndroidManifest.xml res/*

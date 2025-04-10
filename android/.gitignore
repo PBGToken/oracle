@@ -3,3 +3,5 @@
 *.dex
 R.java
 *.idsig
+cls
+dex

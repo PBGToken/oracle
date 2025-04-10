@@ -11,7 +11,7 @@ public class App extends Activity {
     private static TextView resultView;
     private static TextView sdkVersionView;
 
-    private static const VERSION = "development";
+    private static String VERSION = "development";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -19,9 +19,9 @@ public class App extends Activity {
 
         this.setContentView(R.layout.activity_main);
 
-        App.infoView = (TextView)this.findViewById(R.id.info_message);
-        App.resultView = (TextView)this.findViewById(R.id.result);
         App.sdkVersionView = (TextView)this.findViewById(R.id.sdk_version);
+        App.infoView = (TextView)this.findViewById(R.id.info_message);
+        App.resultView = (TextView)this.findViewById(R.id.result);        
 
         this.startServices();
     }
@@ -30,6 +30,7 @@ public class App extends Activity {
     protected void onResume() {
         super.onResume();
 
+        ((TextView)this.findViewById(R.id.app_version)).setText("App version: " + App.VERSION);
         App.setSDKVersion(Integer.toString(android.os.Build.VERSION.SDK_INT));
     }
 
