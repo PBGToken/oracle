@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
+import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 public class App extends Activity {
@@ -23,8 +25,17 @@ public class App extends Activity {
 
         App.sdkVersionView = (TextView)this.findViewById(R.id.sdk_version);
         App.infoView = (TextView)this.findViewById(R.id.info_message);
-        App.resultView = (TextView)this.findViewById(R.id.result);        
+        App.resultView = (TextView)this.findViewById(R.id.result);
+        Button buttonOpenSetKeyDialog = findViewById(R.id.buttonOpenSetKeyDialog);
 
+        buttonOpenSetKeyDialog.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Create an intent to navigate to CreateWallet activity
+                Intent intent = new Intent(App.this, CreateWallet.class);
+                startActivity(intent);  // Start the CreateWallet activity
+            }
+        });
         this.startServices();
     }
 
@@ -72,5 +83,5 @@ public class App extends Activity {
             App.setInfoMessage("Error: " + e.getMessage());
             return;
         }
-    }    
+    }
 }
