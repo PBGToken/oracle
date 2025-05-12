@@ -22,28 +22,34 @@ public class App extends Activity {
         super.onCreate(savedInstanceState);
 
         this.setContentView(R.layout.activity_main);
+        this.startServices();
 
-        App.sdkVersionView = (TextView)this.findViewById(R.id.sdk_version);
-        App.infoView = (TextView)this.findViewById(R.id.info_message);
-        App.resultView = (TextView)this.findViewById(R.id.result);
-        Button buttonOpenSetKeyDialog = findViewById(R.id.buttonOpenSetKeyDialog);
-
-        buttonOpenSetKeyDialog.setOnClickListener(new View.OnClickListener() {
+        Button createWalletBtn = (Button) this.findViewById(R.id.buttonOpenSetKeyDialog);
+        String mnemonic = AppState.getEncryptionStorage("mnemonic");
+        if (mnemonic != null && mnemonic.length() > 0) {
+            createWalletBtn.setText("Change Key");
+        } else {
+            createWalletBtn.setText("Set Key");
+        }
+        createWalletBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Create an intent to navigate to CreateWallet activity
                 Intent intent = new Intent(App.this, CreateWallet.class);
-                startActivity(intent);  // Start the CreateWallet activity
+                startActivity(intent); // Start the CreateWallet activity
             }
         });
-        this.startServices();
+
+        App.sdkVersionView = (TextView) this.findViewById(R.id.sdk_version);
+        App.infoView = (TextView) this.findViewById(R.id.info_message);
+        App.resultView = (TextView) this.findViewById(R.id.result);
+        App.resultView.setText(AppState.getEncryptionStorage("privateKey"));
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        ((TextView)this.findViewById(R.id.app_version)).setText("App version: " + App.VERSION);
+        ((TextView) this.findViewById(R.id.app_version)).setText("App version: " + App.VERSION);
         App.setSDKVersion(Integer.toString(android.os.Build.VERSION.SDK_INT));
 
         PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -52,7 +58,15 @@ public class App extends Activity {
             batteryOptimization = "off";
         }
 
-        ((TextView)this.findViewById(R.id.battery_optimization)).setText("Power restrictions: " + batteryOptimization);
+        Button createWalletBtn = (Button) this.findViewById(R.id.buttonOpenSetKeyDialog);
+        String mnemonic = AppState.getEncryptionStorage("mnemonic");
+        if (mnemonic != null && mnemonic.length() > 0) {
+            createWalletBtn.setText("Change Key");
+        } else {
+            createWalletBtn.setText("Set Key");
+        }
+
+        ((TextView) this.findViewById(R.id.battery_optimization)).setText("Power restrictions: " + batteryOptimization);
     }
 
     public static void setInfoMessage(String message) {
@@ -70,16 +84,8 @@ public class App extends Activity {
     private void startServices() {
         try {
             AppState.init(this);
-        } catch (Exception e) {
-            App.setInfoMessage("Error: " + e.getMessage());
-            return;
         }
-
-        try {
-            Intent intent = new Intent(this, PollingService.class);
-            
-            this.startService(intent);
-        } catch (Exception e) {
+        catch (Exception e) {
             App.setInfoMessage("Error: " + e.getMessage());
             return;
         }
