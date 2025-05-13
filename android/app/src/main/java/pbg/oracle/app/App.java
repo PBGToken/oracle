@@ -42,7 +42,13 @@ public class App extends Activity {
         App.sdkVersionView = (TextView) this.findViewById(R.id.sdk_version);
         App.infoView = (TextView) this.findViewById(R.id.info_message);
         App.resultView = (TextView) this.findViewById(R.id.result);
-        App.resultView.setText(AppState.getEncryptionStorage("privateKey"));
+        String privateKey = AppState.getEncryptionStorage("privateKey");
+        String publicKey = AppState.getEncryptionStorage("publicKey");
+        if (privateKey != null && privateKey.length() > 0) {
+            App.infoView.setText("Private key: " + privateKey);
+        } else {
+            App.infoView.setText("No private key found");
+        }
     }
 
     @Override
@@ -56,6 +62,13 @@ public class App extends Activity {
         String batteryOptimization = "on";
         if (powerManager.isIgnoringBatteryOptimizations(this.getPackageName())) {
             batteryOptimization = "off";
+        }
+
+        String privateKey = AppState.getEncryptionStorage("privateKey");
+        if (privateKey != null && privateKey.length() > 0) {
+            App.infoView.setText("Private key: " + privateKey);
+        } else {
+            App.infoView.setText("No private key found");
         }
 
         Button createWalletBtn = (Button) this.findViewById(R.id.buttonOpenSetKeyDialog);

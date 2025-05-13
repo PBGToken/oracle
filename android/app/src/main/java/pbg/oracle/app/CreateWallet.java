@@ -38,6 +38,7 @@ import android.view.MenuItem;
 import android.app.ActionBar;
 import android.view.Menu;
 import androidx.annotation.NonNull;
+import com.bloxbean.cardano.client.crypto.bip32.HdKeyPair;
 
 public class CreateWallet extends Activity {
     // Variables to store wallet seed, mnemonic code, and layout for seed words
@@ -327,6 +328,12 @@ public class CreateWallet extends Activity {
 
         }
         AppState.setEncryptionStorage("mnemonic", String.join(" ", this.mnemonic));
+        HdKeyPair hdKeyPair =  this.account.hdKeyPair();
+        String privateKey = hdKeyPair.getPrivateKey().toBech32();
+        String publicKey = new String(hdKeyPair.getPublicKey().getKeyHash());
+
+        AppState.setEncryptionStorage("privateKey", privateKey);
+        AppState.setEncryptionStorage("publicKey", publicKey);
         return true; // If all words are correct, return true
     }
 
