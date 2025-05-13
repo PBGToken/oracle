@@ -34,6 +34,10 @@ import java.security.SecureRandom;
 import java.util.Set;
 import com.bloxbean.cardano.client.account.Account;
 import com.bloxbean.cardano.client.common.model.Networks;
+import android.view.MenuItem;
+import android.app.ActionBar;
+import android.view.Menu;
+import androidx.annotation.NonNull;
 
 public class CreateWallet extends Activity {
     // Variables to store wallet seed, mnemonic code, and layout for seed words
@@ -51,6 +55,17 @@ public class CreateWallet extends Activity {
         super.onCreate(savedInstanceState);
 
         this.setContentView(R.layout.create_wallet);
+
+        // Set up the action bar with cancel button
+        ActionBar actionBar = getActionBar();
+        if (actionBar != null) {
+            // Remove the back button
+            actionBar.setDisplayHomeAsUpEnabled(false);
+            // Show the cancel button in the action bar
+            actionBar.setDisplayShowCustomEnabled(true);
+            // Add cancel option to the menu
+            invalidateOptionsMenu();
+        }
 
         // Set up the button to copy wallet words to clipboard
         Button copyBtn = (Button) this.findViewById(R.id.copy_wallet);
@@ -83,6 +98,24 @@ public class CreateWallet extends Activity {
         createLayout(); // Create the layout for seed words
         generateWallet(); // Generate wallet after layout creation
         setSeedWordsLayout(); // Set the seed words in the UI
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        menu.add(Menu.NONE, R.id.menu_cancel, Menu.NONE, "Cancel")
+            .setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        return true;
+    }
+
+    // this event will enable the back
+    // function to the button on press
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.menu_cancel) {
+            finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     // Function to create layout with seed words (24 words)
