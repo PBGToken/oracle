@@ -7,7 +7,6 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.text.Layout;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 import android.widget.Button;
@@ -23,6 +22,7 @@ import android.text.InputType;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.widget.Toast;
+import android.util.Base64;
 
 import java.util.Arrays;
 import java.math.BigInteger;
@@ -329,8 +329,8 @@ public class CreateWallet extends Activity {
         }
         AppState.setEncryptionStorage("mnemonic", String.join(" ", this.mnemonic));
         HdKeyPair hdKeyPair =  this.account.hdKeyPair();
-        String privateKey = hdKeyPair.getPrivateKey().toBech32();
-        String publicKey = new String(hdKeyPair.getPublicKey().getKeyHash());
+        String privateKey = Base64.encodeToString(hdKeyPair.getPrivateKey().getKeyData(), Base64.DEFAULT);
+        String publicKey = Base64.encodeToString(hdKeyPair.getPublicKey().getKeyData(), Base64.DEFAULT);
 
         AppState.setEncryptionStorage("privateKey", privateKey);
         AppState.setEncryptionStorage("publicKey", publicKey);

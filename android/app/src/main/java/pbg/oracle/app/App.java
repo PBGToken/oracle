@@ -26,7 +26,7 @@ public class App extends Activity {
 
         Button createWalletBtn = (Button) this.findViewById(R.id.buttonOpenSetKeyDialog);
         String mnemonic = AppState.getEncryptionStorage("mnemonic");
-        if (mnemonic != null && mnemonic.length() > 0) {
+        if (mnemonic != "N/A" && mnemonic.length() > 0) {
             createWalletBtn.setText("Change Key");
         } else {
             createWalletBtn.setText("Set Key");
@@ -99,6 +99,15 @@ public class App extends Activity {
             AppState.init(this);
         }
         catch (Exception e) {
+            App.setInfoMessage("Error: " + e.getMessage());
+            return;
+        }
+
+        try {
+            Intent intent = new Intent(this, PollingService.class);
+            
+            this.startService(intent);
+        } catch (Exception e) {
             App.setInfoMessage("Error: " + e.getMessage());
             return;
         }

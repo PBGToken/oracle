@@ -27,6 +27,10 @@ public class AppState {
         AppState.deviceID = deviceID;
     }
 
+    public static int getDeviceID() {
+        return AppState.deviceID;
+    }
+
     public static void setInfoMessage(String info) {
         AppInfoSetter setter = new AppInfoSetter(info);
         AppState.handler.post(setter);

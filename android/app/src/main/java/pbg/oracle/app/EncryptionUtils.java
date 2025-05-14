@@ -9,9 +9,10 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 import com.bloxbean.cardano.client.crypto.api.impl.EdDSASigningProvider;
+import com.bloxbean.cardano.client.crypto.api.SigningProvider;
 
 public class EncryptionUtils {
-    private static final EdDSASigningProvider signingProvider = new EdDSASigningProvider();
+    private static final SigningProvider signingProvider = new EdDSASigningProvider();
     private static final String KEY_ALIAS = "OracleKeyAlias";
     private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
@@ -78,7 +79,7 @@ public class EncryptionUtils {
     }
 
     public static byte[] getSignature(byte[] data, byte[] privateKey) throws Exception {
-        return signingProvider.sign(data, privateKey);
+        return signingProvider.signExtended(data, privateKey);
     }
 
     public static boolean getVerification(byte[] signature, byte[] data, byte[] publicKey) throws Exception {
