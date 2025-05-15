@@ -127,11 +127,10 @@ scope.addEventListener("push", (event: PushEvent) => {
     const stage: string = payload.stage
     const heartbeat: boolean = !!payload.heartbeat
     const timestamp: number | undefined = payload.timestamp
-    const bridgeWithdrawal: any | undefined = payload.bridgeWithdrawal
 
     event.waitUntil(
         (async () => {
-            await handleFeed(stage, heartbeat, timestamp, bridgeWithdrawal)
+            await handleFeed(stage, heartbeat, timestamp)
         })()
     )
 })
