@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs"
 import { dirname, join } from "node:path"
+import { execSync } from "node:child_process"
 import { defineConfig } from "vite"
 import makeReactPlugin from "@vitejs/plugin-react"
 import { viteStaticCopy } from "vite-plugin-static-copy"
@@ -10,7 +10,7 @@ const srcDir = join(repoRoot, "./src/ui")
 const assetsDir = join(repoRoot, "./assets")
 const dstDir = join(repoRoot, "../dist")
 
-const version = JSON.parse(readFileSync("./package.json").toString()).version
+const version = execSync("git rev-parse --short HEAD").toString().slice(0, 6)
 
 export default defineConfig({
     root: srcDir,
