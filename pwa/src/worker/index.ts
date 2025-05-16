@@ -128,11 +128,14 @@ scope.addEventListener("push", (event: PushEvent) => {
     const heartbeat: boolean = !!payload.heartbeat
     const timestamp: number | undefined = payload.timestamp
 
-    event.waitUntil(
-        (async () => {
-            await handleFeed(stage, heartbeat, timestamp)
-        })()
-    )
+    // ignore payloads that don't contain .stage
+    if (stage) {
+        event.waitUntil(
+            (async () => {
+                await handleFeed(stage, heartbeat, timestamp)
+            })()
+        )
+    }
 })
 
 scope.addEventListener("pushsubscriptionchange", async (_event: Event) => {
