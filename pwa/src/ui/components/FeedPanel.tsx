@@ -2,11 +2,15 @@ import styled from "styled-components"
 import { useEvents } from "../hooks"
 import { FeedItem } from "./FeedItem"
 
-export function FeedPanel() {
+type FeedPanelProps = {
+    className?: string
+}
+
+export function FeedPanel({ className }: FeedPanelProps) {
     const events = useEvents()
 
     return (
-        <StyledFeedPanel>
+        <StyledFeedPanel className={className}>
             <h2>Feed</h2>
 
             {events.map((event) => {

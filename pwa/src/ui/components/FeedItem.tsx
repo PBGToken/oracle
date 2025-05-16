@@ -1,23 +1,31 @@
 import styled from "styled-components"
 import { FeedEvent, formatPrices } from "../../worker/FeedEvent"
-import { Shorten } from "./Shorten"
+import { StageName } from "../../worker/stages"
+import { ExplorerLink } from "./ExplorerLink"
 
 type FeedItemProps = {
+    className?: string
     event: FeedEvent
 }
 
-export function FeedItem({ event }: FeedItemProps) {
+export function FeedItem({ className, event }: FeedItemProps) {
+    const stage = (event.stage ?? "Mainnet") as StageName
+    const message =
+        Object.keys(event.prices).length == 0
+            ? (event.message ?? "")
+            : formatPrices(event.prices ?? {})
+
     return (
-        <StyledFeedItem>
+        <StyledFeedItem className={className}>
             <p>
-                {event.stage ?? "Mainnet"}
+                {stage}
                 {event.error ? `, not signed (${event.error})` : ""}
             </p>
             <p>
-                Tx ID: <Shorten value={event.hash} />
+                Tx ID: <ExplorerLink tx={event.hash} stage={stage} />
             </p>
             <p>{new Date(event.timestamp).toLocaleString()}</p>
-            <p>{formatPrices(event.prices ?? {})}</p>
+            <p>{message}</p>
         </StyledFeedItem>
     )
 }

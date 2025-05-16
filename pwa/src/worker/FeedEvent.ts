@@ -4,6 +4,7 @@ export type FeedEvent = {
     error?: string
     timestamp: number
     prices: Record<string, number>
+    message?: string
 }
 
 export function formatPrices(prices: Record<string, number>): string {

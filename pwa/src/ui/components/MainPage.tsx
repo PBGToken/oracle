@@ -1,5 +1,5 @@
 import { useState } from "react"
-import styled from "styled-components"
+import { styled } from "styled-components"
 import { useServiceWorker } from "../hooks"
 import { FeedPanel } from "./FeedPanel"
 import { Header } from "./Header"

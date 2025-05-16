@@ -667,17 +667,20 @@ async function handleSignRWAMint(stage: StageName, tx: Tx): Promise<void> {
 
     const id = await signCardanoTx(stage, tx)
 
+    const formattedQty = (Number(qty) / Math.pow(10, 6)).toFixed(6)
+
     // finally add event to table
     await appendEvent({
         stage,
         hash: id.toHex(),
         timestamp: Date.now(),
-        prices: {}
+        prices: {},
+        message: `minted RWA:  ${ticker}`
     })
 
     await showNotification(
         `${stage}, signed RWA mint`,
-        `minted ${(Number(qty) / Math.pow(10, 6)).toFixed(2)} ${ticker}`
+        `minted ${formattedQty} ${ticker}`
     )
 }
 
@@ -711,7 +714,8 @@ async function handleSignDVPPriceUpdate(
                 stage,
                 hash: id.toHex(),
                 timestamp: Date.now(),
-                prices
+                prices,
+                message: "updated prices"
             })
 
             await showNotification(
