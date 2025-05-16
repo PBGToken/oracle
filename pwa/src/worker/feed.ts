@@ -675,7 +675,7 @@ async function handleSignRWAMint(stage: StageName, tx: Tx): Promise<void> {
         hash: id.toHex(),
         timestamp: Date.now(),
         prices: {},
-        message: `minted RWA:  ${ticker}`
+        message: `minted RWA: ${formattedQty} ${ticker}`
     })
 
     await showNotification(
