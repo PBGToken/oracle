@@ -600,6 +600,21 @@ async function handleSignRWAMint(stage: StageName, tx: Tx): Promise<void> {
         throw new Error("invalid reservesAccount hash")
     }
 
+    // only one witness allowed, which must be the same validator
+    const allScripts = tx.witnesses.allScripts
+    if (allScripts.length != 1) {
+        throw new Error("only one validator allowed")
+    }
+
+    const script = allScripts[0]
+    if (!("plutusVersion" in script)) {
+        throw new Error("not a UplcProgram")
+    }
+
+    if (!equalsBytes(script.hash(), mph.bytes)) {
+        throw new Error("script hash bytes not equal to minting policy")
+    }
+
     //const bridgeRegistration = await getOldestBridgeRegistration(
     //    cardanoClient,
     //    policy
