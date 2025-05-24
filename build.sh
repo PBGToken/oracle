@@ -5,7 +5,7 @@ mkdir -p ./dist
 npm run build -C ./pwa
 
 # build android native app
-make -C ./android
-cp ./android/pbg_oracle.apk ./dist/
+#make -C ./android
+#cp ./android/pbg_oracle.apk ./dist/
 
 # TODO: build iOS app??
