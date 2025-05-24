@@ -34,7 +34,7 @@ export default defineConfig({
     },
     resolve: {},
     server: {
-        port: 80
+        port: 8080
     },
     plugins: [
         makeReactPlugin({

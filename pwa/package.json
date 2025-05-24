@@ -2,10 +2,11 @@
     "name": "@pbg/oracle-pwa",
     "version": "1.0.26",
     "scripts": {
-        "build": "npm run prettify && npm run test:types && npm run build:preload-db && npm run build:worker && npm run build:ui",
+        "build": "npm run prettify && npm run test:types && npm run build:preload-db && npm run build:worker && npm run build:ui && npm run build:validators",
         "build:preload-db": "node esbuild.preload-db.js",
         "build:ui": "NODE_ENV=development npx vite build -c vite.config.js",
         "build:worker": "node esbuild.worker.js",
+        "build:validators": "node esbuild.validators.js",
         "dev:ui": "npx vite -c vite.config.js --host",
         "prettify": "npx prettier . --write",
         "test:types": "npx tsc --noEmit"
@@ -20,6 +21,8 @@
         "singleQuote": false
     },
     "devDependencies": {
+        "@aws-sdk/client-iam": "^3.817.0",
+        "@aws-sdk/client-lambda": "^3.817.0",
         "@helios-lang/cbor": "^0.3.1",
         "@helios-lang/codec-utils": "^0.3.4",
         "@helios-lang/crypto": "^0.2.3",
@@ -29,6 +32,7 @@
         "@helios-lang/uplc": "^0.7.17",
         "@safe-global/sdk-starter-kit": "^2.0.1",
         "@tanstack/react-query": "^5.62.2",
+        "@types/jszip": "^3.4.0",
         "@types/node": "^22.10.2",
         "@types/react": "^18.3.12",
         "@types/react-dom": "^18.3.1",
@@ -39,6 +43,7 @@
         "buffer": "^6.0.3",
         "esbuild": "^0.24.0",
         "ethers": "^6.13.5",
+        "jszip": "^3.10.1",
         "prettier": "^3.4.2",
         "react": "^18.3.1",
         "react-dom": "^18.3.1",

@@ -1,35 +1,45 @@
 # multi-sig-oracle-client
 
-Multi Signature Oracle Client for PBG Token price feeds
+Multi Signature Oracle Client for PBG Token price feeds.
 
 Though we (will soon) integrate with Orcfax price feeds, we must still maintain our own multi-sig infrastructure for price feed updates as we need a fallback in case there are problems with Orcfax.
 
 A secondary reason is that our own multi-sig oracle infrastructure can be used in conjunction with Orcfax, to increase our Nakamoto coefficient by at least 1 (1 externally verifiable, 2 or more internally verifiable).
 
-The oracle client is a progressive web app, that can be installed on a (spare) mobile phone, and left to run in the background.
+## Installing
 
-## iOS
+Installation steps:
 
-Activate web push notifications in Safari dev settings
+1. Go to `https://pbgtoken.github.io/oracle`
+2. Optionally you can install this app as a PWA on your smart phone:
+   - iOS: open site with Safari, and in the share menu, look for a button named 'Add to home screen'
+   - Android: open with any browser, and in the main menu, look for a button named 'Install to home screen' or similar
+3. Configure your private key using 24 words
+4. Configure your AWS account keys
+5. Click 'Push validator'
 
-## Android
+## AWS access keys
 
-Prefer Firefox (it seems that Mobile Google Chrome sometimes creates Web Push API endpoints that aren't valid)
+1. Create an AWS account
+2. Login
+3. Look for 'IAM'
+4. Go to 'Users'
+5. In the summary panel, below Access key 1, click 'Create access key'
+6. Under use-cases, selected 'Third-party service'
+7. Confirm that you understand the recommendation, and click 'Next'
+8. As a description, write 'PBG Oracle'
+9. Click 'show' under secret access key
+10. Note the access key and secret access key in a safe place
 
-How to overcome unacknowledged notification limit? (seems to be around 50, after which the service worker can no longer run???)
+## History
 
-Use Firefox Nightly for Developers, and in about:config set dom.push.maxQuotaPerSubscription to 2000000000 (2 billion)
+The PBG oracle app has seen several iterations:
 
-This way, once the notifications saturate, the push messages keep arriving to the service worker.
-
-### Android 12
-
-Disable battery optimization: Settings > Apps > See all # apps > Browser used for PWA > Battery > Select "Unrestricted"
-
-Enable developer options: Settings > About phone > Tap Build number 7 times
-
-Use developer options to enable Stay Awake: Settings > System > Developer options> Stay awake
-
-### Android 14
-
-## Desktop browsers
+1. Progressive Web App (PWA) with a service-worker continuously runs, and uses the WebPush API to get notified when transactions must be signed. Disadvantages:
+    - Doesn't work on iOS because background-processes are severely throttled
+    - Only reliably works on Android using Firefox, but even there, after two weeks of inactivity, the background-process is throttled
+    - WebPush API has a typical latency of 10 seconds
+2. Android native app which continously polls for transactions to be signed. Disadvantages:
+    - Phone still needs to be charging 100% of the time, which is a strain on the battery (my phone battery become swollen after 6 months of continuous charging)
+    - A large amount of code needs to duplicated in Java
+3. Current: PWA that pushes JavaScript to a AWS serverless function (other cloud providers will be implemented later), and registers the URL of the serverless function with the PBGToken backend. The serverless function handles transaction validation and signing.

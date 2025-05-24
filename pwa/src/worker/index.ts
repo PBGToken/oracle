@@ -7,6 +7,7 @@ import {
     syncSubscription
 } from "./auth"
 import {
+    getAWSAccessKey,
     getDeviceId,
     getIsPrimary,
     getLastHeartbeat,
@@ -15,6 +16,7 @@ import {
     getSubscription,
     listEvents,
     openDatabase,
+    setAWSAccessKey,
     setDeviceId,
     setIsPrimary,
     setLastSync,
@@ -22,6 +24,8 @@ import {
 } from "./db"
 import { handleFeed } from "./feed"
 import { scope } from "./scope"
+
+// TODO: simply the service worker so it only handles the minimum necessary to be installable as a PWA (and persistent storage of keys)
 
 scope.addEventListener("activate", (event: ExtendableEvent) => {
     event.waitUntil(
@@ -55,6 +59,9 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                 switch (method) {
                     case "get":
                         switch (key) {
+                            case "awsAccessKey":
+                                handleSuccess(await getAWSAccessKey())
+                                break
                             case "deviceId":
                                 handleSuccess(await getDeviceId())
                                 break
@@ -95,6 +102,10 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                         break
                     case "set":
                         switch (key) {
+                            case "awsAccessKey":
+                                await setAWSAccessKey(value[0], value[1])
+                                handleSuccess()
+                                break
                             case "deviceId":
                                 await setDeviceId(value)
                                 handleSuccess()

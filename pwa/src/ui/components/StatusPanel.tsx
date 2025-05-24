@@ -1,5 +1,8 @@
+import { ReactNode } from "react"
 import styled from "styled-components"
 import Bowser from "bowser"
+import { hexToBytes } from "@helios-lang/codec-utils"
+import { makeBip32PrivateKey } from "@helios-lang/tx-utils"
 import {
     useDeviceId,
     useIsAuthorized,
@@ -7,8 +10,6 @@ import {
     useNotificationPermission,
     usePrivateKey
 } from "../hooks"
-import { makeBip32PrivateKey } from "@helios-lang/tx-utils"
-import { hexToBytes } from "@helios-lang/codec-utils"
 import { Button } from "./Button"
 import { ErrorMessage } from "./ErrorMessage"
 import { IsPrimary } from "./IsPrimary"
@@ -18,12 +19,12 @@ const borderRadius = 5
 
 type StatusProps = {
     serviceWorkerStatus: string
-    onChangeKey: () => void
+    children?: ReactNode
 }
 
 const browser = Bowser.getParser(window.navigator.userAgent)
 
-export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
+export function StatusPanel({ children, serviceWorkerStatus }: StatusProps) {
     const [privateKey] = usePrivateKey()
     const [deviceId] = useDeviceId()
 
@@ -60,9 +61,7 @@ export function StatusPanel({ onChangeKey, serviceWorkerStatus }: StatusProps) {
             <p>{isSubscribed ? "Subscribed" : "Not subscribed"}</p>
             <p>OS: {browser.getOSName()}</p>
             <p>Browser: {browser.getBrowserName()}</p>
-            <Button onClick={onChangeKey}>
-                {privateKey == "" ? "Set Key" : "Change Key"}
-            </Button>
+            <>{children}</>
         </StyledStatusPanel>
     )
 }

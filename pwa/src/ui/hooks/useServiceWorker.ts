@@ -88,6 +88,7 @@ function fetchInternal(
 export function fetchWorker(
     method: "get",
     key:
+        | "awsAccessKey"
         | "deviceId"
         | "events"
         | "isAuthorized"
@@ -101,12 +102,13 @@ export function fetchWorker(
 ): Promise<any>
 export function fetchWorker(
     method: "set",
-    key: "deviceId" | "isPrimary" | "privateKey",
+    key: "awsAccessKey" | "deviceId" | "isPrimary" | "privateKey",
     value: any
 ): Promise<any>
 export function fetchWorker(
     method: "get" | "set",
     key:
+        | "awsAccessKey"
         | "deviceId"
         | "events"
         | "isAuthorized"

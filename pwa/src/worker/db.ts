@@ -65,6 +65,18 @@ export async function listEvents(): Promise<FeedEvent[]> {
     }
 }
 
+// the first entry is the public access key, the second entry the private access key
+export function getAWSAccessKey(): Promise<[string, string]> {
+    return getConfig("awsAccessKey", ["", ""])
+}
+
+export function setAWSAccessKey(
+    pubAccessKey: string,
+    secretAccessKey: string
+): Promise<void> {
+    return setConfig("awsAccessKey", [pubAccessKey, secretAccessKey])
+}
+
 export function getDeviceId(): Promise<number> {
     return getConfig("deviceId", 0)
 }
