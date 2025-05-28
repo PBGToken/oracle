@@ -82,7 +82,9 @@ export function usePushAWSLambda(): UseMutationResult<
 }
 
 async function getZipFromUrl(): Promise<Uint8Array> {
-    const jsContent = await fetch("/aws-validator.js").then((res) => res.text())
+    const jsContent = await fetch(
+        `${window.location.href}/aws-validator.js`
+    ).then((res) => res.text())
 
     const zip = new JSZip()
     zip.file("index.js", jsContent)

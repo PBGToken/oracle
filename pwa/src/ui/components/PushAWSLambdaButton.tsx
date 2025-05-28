@@ -22,7 +22,11 @@ export function PushAWSLambdaButton({ stage }: ChangeAWSKeyButtonProps) {
         return (
             <>
                 <Button disabled={mutation.isPending} onClick={handlePush}>
-                    {mutation.isPending ? <Spinner /> : "Push AWS Lambda function"}
+                    {mutation.isPending ? (
+                        <Spinner />
+                    ) : (
+                        "Push AWS Lambda function"
+                    )}
                 </Button>
                 {mutation.error && <p>{mutation.error.message}</p>}
             </>
