@@ -4,11 +4,10 @@ import { useServiceWorker } from "../hooks"
 import { AWSAccessKeyForm } from "./AWSAccessKeyForm"
 import { ChangeAWSKeyButton } from "./ChangeAWSKeyButton"
 import { ChangeKeyButton } from "./ChangeKeyButton"
-import { FeedPanel } from "./FeedPanel"
 import { Header } from "./Header"
 import { KeyInput } from "./KeyInput"
 import { StatusPanel } from "./StatusPanel"
-import { PushAWSLambdaButton } from "./PushAWSLambdaButton"
+import { SubscriptionsPanel } from "./SubscriptionsPanel"
 
 export function MainPage() {
     const [showDialog, setShowDialog] = useState<"" | "key" | "aws">("")
@@ -43,9 +42,10 @@ export function MainPage() {
                             <ChangeAWSKeyButton
                                 onChange={handleShowChangeAWSKey}
                             />
-                            <PushAWSLambdaButton />
                         </Column>
                     </StatusPanel>
+
+                    <SubscriptionsPanel />
 
                     {/*<a
                         href="./pbg_oracle.apk"
@@ -55,7 +55,7 @@ export function MainPage() {
                         Install Android native
                     </a>*/}
 
-                    <FeedPanel />
+                    {/*<FeedPanel />*/}
                 </>
             )}
         </StyledMainPage>

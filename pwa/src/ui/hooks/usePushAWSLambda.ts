@@ -17,13 +17,20 @@ import { useMutation, type UseMutationResult } from "@tanstack/react-query"
 import JSZip from "jszip"
 import { useAWSAccessKey } from "./useAWSAccessKey"
 import { usePrivateKey } from "./usePrivateKey"
+import { deriveECDSAPublicKey, deriveSchnorrPublicKey } from "./keys"
+import { createAuthToken, Secrets } from "./secrets"
+import { StageName, stages } from "./stages"
 
-const region = "us-east-1"
+const AWS_REGION = "us-east-1"
+
+type PushAWSLambdaArgs = {
+    stage: StageName
+}
 
 export function usePushAWSLambda(): UseMutationResult<
     void,
     Error,
-    undefined,
+    PushAWSLambdaArgs,
     undefined
 > {
     const [[awsAccessKey, awsSecretAccessKey]] = useAWSAccessKey()
@@ -31,7 +38,7 @@ export function usePushAWSLambda(): UseMutationResult<
 
     return useMutation({
         mutationKey: ["aws-lambda"],
-        mutationFn: async () => {
+        mutationFn: async ({ stage }: PushAWSLambdaArgs) => {
             if (
                 awsAccessKey == "" ||
                 awsSecretAccessKey == "" ||
@@ -40,20 +47,36 @@ export function usePushAWSLambda(): UseMutationResult<
                 return
             }
 
+            const platformURL = stages[stage].baseUrl
+            const dvpAssetsValidatorAddr = stages[stage].assetsValidatorAddress
+
+            const functionName = `${stage}PBGOracleValidator`
+            const roleName = `${functionName}Role`
+
             const zipBuffer = await getZipFromUrl()
+
             const roleArn = await getOrCreateBasicLambdaRole(
+                roleName,
                 awsAccessKey,
                 awsSecretAccessKey
             )
 
-            await createLambdaFromJSFile(
+            // TODO: fetch secrets from platform
+            const secrets = await fetchPlatformSecrets(platformURL, privateKey)
+
+            const functionURL = await createLambdaFromJSFile(
                 zipBuffer,
-                "PBGOracleValidator",
+                functionName,
                 awsAccessKey,
                 awsSecretAccessKey,
                 privateKey,
-                roleArn
+                secrets,
+                roleArn,
+                dvpAssetsValidatorAddr
             )
+
+            // now send the URL to the platform
+            await syncFunctionURL(functionURL, platformURL, privateKey)
         }
     })
 }
@@ -75,15 +98,24 @@ async function createLambdaFromJSFile(
     awsAccessKeyId: string,
     awsSecretAccessKey: string,
     privateKey: string,
-    roleArn: string
+    secrets: Secrets, // TODO: add server HMAC key to secrets
+    roleArn: string,
+    dvpAssetsValidatorAddr: string
 ): Promise<string> {
     const lambdaClient = new LambdaClient({
-        region,
+        region: AWS_REGION,
         credentials: {
             accessKeyId: awsAccessKeyId,
             secretAccessKey: awsSecretAccessKey
         }
     })
+
+    const env: Record<string, string> = {
+        PRIVATE_KEY: privateKey,
+        BLOCKFROST_API_KEY: secrets.blockfrostApiKey,
+        PLATFORM_KEY: "",
+        DVP_ASSETS_VALIDATOR_ADDRESS: dvpAssetsValidatorAddr
+    }
 
     try {
         await lambdaClient.send(
@@ -99,9 +131,7 @@ async function createLambdaFromJSFile(
             new UpdateFunctionConfigurationCommand({
                 FunctionName: functionName,
                 Environment: {
-                    Variables: {
-                        PRIVATE_KEY: privateKey
-                    }
+                    Variables: env
                 }
             })
         )
@@ -128,9 +158,7 @@ async function createLambdaFromJSFile(
                     MemorySize: 512,
                     Publish: true,
                     Environment: {
-                        Variables: {
-                            PRIVATE_KEY: privateKey
-                        }
+                        Variables: env
                     }
                 })
             )
@@ -206,13 +234,12 @@ async function createLambdaFromJSFile(
 }
 
 async function getOrCreateBasicLambdaRole(
+    roleName: string,
     awsAccessKeyId: string,
     awsSecretAccessKey: string
 ): Promise<string> {
-    const roleName = "PBGOracleValidatorRole"
-
     const iamClient = new IAMClient({
-        region,
+        region: AWS_REGION,
         credentials: {
             accessKeyId: awsAccessKeyId,
             secretAccessKey: awsSecretAccessKey
@@ -269,8 +296,61 @@ async function getOrCreateBasicLambdaRole(
             newRole.Role?.Arn
         )
 
+        // wait a bit
+        await new Promise((resolve) => setTimeout(resolve, 5000))
+
         return newRole.Role.Arn
     } else {
         throw new Error(`unable to find/create role ${roleName}`)
     }
+}
+
+async function syncFunctionURL(
+    functionURL: string,
+    stageURL: string,
+    privateKey: string
+): Promise<void> {
+    const schnorrSecp256k1PublicKey = deriveSchnorrPublicKey(privateKey)
+    const ecdsaSecp256k1PublicKey = deriveECDSAPublicKey(privateKey)
+
+    const url = `${stageURL}/subscribe`
+    const response = await fetch(url, {
+        method: "POST",
+        mode: "cors",
+        headers: {
+            Authorization: createAuthToken(privateKey)
+        },
+        body: JSON.stringify({
+            subscription: JSON.stringify({
+                endpoint: functionURL
+            }), // TODO: simplify this if no other fields are needed
+            isPrimary: false, // TODO: remove this field
+            schnorrSecp256k1PublicKey,
+            ecdsaSecp256k1PublicKey
+        })
+    })
+
+    if (!response.ok) {
+        throw new Error(`failed to fetch ${url}`)
+    }
+}
+
+// undefined return value signifies unauthorized
+async function fetchPlatformSecrets(
+    platformURL: string,
+    privateKey: string
+): Promise<Secrets> {
+    const url = `${platformURL}/secrets`
+
+    const response = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        headers: {
+            Authorization: createAuthToken(privateKey)
+        }
+    })
+
+    const data = await response.text()
+
+    return JSON.parse(data) as Secrets // TODO: type-safe
 }

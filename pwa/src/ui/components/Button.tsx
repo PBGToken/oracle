@@ -21,6 +21,10 @@ type StyledButtonProps = {
 }
 
 const StyledButton = styled.button<StyledButtonProps>`
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
     background: ${({ theme, $secondary }) =>
         $secondary ? "transparent" : theme.colors.primary};
     border: none;

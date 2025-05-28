@@ -825,7 +825,6 @@ async function makeCardanoClient(
     return makeBlockfrostV0Client(networkName, secrets.blockfrostApiKey)
 }
 
-// hard code USDM for now
 async function verifyPrices(
     tx: Tx,
     stage: StageName,

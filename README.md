@@ -31,11 +31,29 @@ Installation steps:
 9. Click 'show' under secret access key
 10. Note the access key and secret access key in a safe place
 
+## Network architecture
+
+Active oracles are invited to help secure the PBGToken protocols.
+When oracles accept the invitation they generate a new Ed25519 private-public keypair, and send the public key to PBGToken using external means.
+
+PBG Token keeps a database of the public keys of all active oracles.
+
+The oracle then has access to two endpoints:
+
+1. GET `https://api.oracle.token.pbg.io/secrets`: fetch common secrets
+2. POST `https://api.oracle.token.pbg.io/subscribe`: send the URL to the PBG Token backend
+
+The common secrets are fetched right before a serverless function is pushed to the oracle's AWS account.
+The subscribe endpoint is called right after the serverless function has been created and assigned a URL.
+
+For the mainnet test environment, the following base URL is used: `https://api.oracle.beta.pbgtoken.io`
+For preprod, the following base URL is used: `https://api.oracle.preprod.pbgtoken.io`
+
 ## History
 
 The PBG oracle app has seen several iterations:
 
-1. Progressive Web App (PWA) with a service-worker continuously runs, and uses the WebPush API to get notified when transactions must be signed. Disadvantages:
+1. Progressive Web App (PWA) with a service-worker continuously runs, and using the WebPush API to get notified when transactions must be signed. Disadvantages:
     - Doesn't work on iOS because background-processes are severely throttled
     - Only reliably works on Android using Firefox, but even there, after two weeks of inactivity, the background-process is throttled
     - WebPush API has a typical latency of 10 seconds

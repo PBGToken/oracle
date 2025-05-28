@@ -2,15 +2,18 @@ import { useCallback } from "react"
 import { useAWSAccessKey, usePushAWSLambda } from "../hooks"
 import { Button } from "./Button"
 import { Spinner } from "./Spinner"
+import { StageName } from "../hooks/stages"
 
-type ChangeAWSKeyButtonProps = {}
+type ChangeAWSKeyButtonProps = {
+    stage: StageName
+}
 
-export function PushAWSLambdaButton({}: ChangeAWSKeyButtonProps) {
+export function PushAWSLambdaButton({ stage }: ChangeAWSKeyButtonProps) {
     const [[pubKey, _privateKey]] = useAWSAccessKey()
     const mutation = usePushAWSLambda()
 
     const handlePush = useCallback(() => {
-        mutation.mutate(undefined)
+        mutation.mutate({ stage })
     }, [mutation])
 
     if (pubKey == "") {
