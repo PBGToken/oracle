@@ -41,12 +41,18 @@ const BLOCKFROST_API_KEY = expectDefined(
     process.env.BLOCKFROST_API_KEY,
     "BLOCKFROST_API_KEY not set"
 )
-const DVP_ASSETS_VALIDATOR_ADDRESS = expectDefined(
+const DVP_ASSETS_VALIDATOR_ADDRESS_STRING = expectDefined(
     process.env.DVP_ASSETS_VALIDATOR_ADDRESS,
     "DVP_ASSETS_VALIDATOR_ADDRESS not set"
 )
 
-const _castRWADatum = tokenized_account.$types.State({ isMainnet: false }) // doesn't matter, only used for type
+const DVP_ASSETS_VALIDATOR_ADDRESS = makeShelleyAddress(
+    DVP_ASSETS_VALIDATOR_ADDRESS_STRING
+)
+
+const IS_MAINNET = DVP_ASSETS_VALIDATOR_ADDRESS.mainnet
+
+const _castRWADatum = tokenized_account.$types.State({ isMainnet: IS_MAINNET }) // doesn't matter, only used for type
 type RWADatum = StrictType<typeof _castRWADatum>
 
 type ValidationRequest = {
@@ -74,6 +80,7 @@ export async function handler(
         }
     } catch (e: any) {
         console.error(e.message)
+        console.log(e.stack)
 
         return {
             statusCode: 400,
@@ -93,7 +100,7 @@ async function validateRequest(request: ValidationRequest): Promise<string> {
         case "price-update":
         case "rwa-mint": {
             const tx = decodeTx(request.tx)
-            const cardanoClient = await makeCardanoClient(tx)
+            const cardanoClient = await makeCardanoClient()
             await tx.recover(cardanoClient)
 
             const signature = await (async () => {
@@ -230,14 +237,8 @@ async function verifyPrices(
     )
 }
 
-function isMainnetTx(tx: Tx): boolean {
-    return tx.body.inputs.some(
-        (i) => i.address.era == "Shelley" && i.address.mainnet
-    )
-}
-
-async function makeCardanoClient(tx: Tx): Promise<BlockfrostV0Client> {
-    const networkName: "preprod" | "mainnet" = isMainnetTx(tx)
+async function makeCardanoClient(): Promise<BlockfrostV0Client> {
+    const networkName: "preprod" | "mainnet" = IS_MAINNET
         ? "mainnet"
         : "preprod"
 
@@ -259,12 +260,10 @@ function makeRWAMetadataAssetClass(mph: MintingPolicyHash, ticker: string) {
     )
 }
 
-function decodeRWADatum(
-    ticker: string,
-    isMainnet: boolean,
-    data: UplcData | undefined
-): RWADatum {
-    const castDatum = tokenized_account.$types.Metadata({ isMainnet })
+function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
+    const castDatum = tokenized_account.$types.Metadata({
+        isMainnet: IS_MAINNET
+    })
     const datum = expectDefined(data, `not metadata datum for RWA ${ticker}`)
 
     const state = castDatum.fromUplcData(datum)
@@ -293,8 +292,7 @@ async function validateRWAMint(
 
     const ticker = decodeUtf8(tokenName.slice(4))
     const vh = makeValidatorHash(mph.bytes)
-    const isMainnet = isMainnetTx(tx)
-    const addr = makeShelleyAddress(isMainnet, vh)
+    const addr = makeShelleyAddress(IS_MAINNET, vh)
     const metadataAssetClass = makeRWAMetadataAssetClass(mph, ticker)
 
     const metadataUtxo = expectDefined(
@@ -303,7 +301,7 @@ async function validateRWAMint(
         )[0]
     )
 
-    const datum = decodeRWADatum(ticker, isMainnet, metadataUtxo.datum?.data)
+    const datum = decodeRWADatum(ticker, metadataUtxo.datum?.data)
 
     if (datum.account.length < 16) {
         // TODO: actually check reserves
