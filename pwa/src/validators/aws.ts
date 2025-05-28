@@ -112,7 +112,7 @@ async function validateRequest(request: ValidationRequest): Promise<string> {
                 }
             })()
 
-            return bytesToHex(signature.bytes)
+            return bytesToHex(signature.toCbor())
         }
         default:
             throw new Error(`unhandled validation request kind ${request.kind}`)
