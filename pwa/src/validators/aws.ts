@@ -73,6 +73,8 @@ export async function handler(
             body: signature
         }
     } catch (e: any) {
+        console.error(e.message)
+
         return {
             statusCode: 400,
             headers: {
@@ -260,6 +262,8 @@ function decodeRWADatum(
 }
 
 async function validateRWAMint(tx: Tx): Promise<Signature> {
+    console.log("validating RWA mint request...")
+
     const mintedAssetClasses = tx.body.minted.assetClasses.filter(
         (ac) => !ac.isEqual(ADA)
     )
