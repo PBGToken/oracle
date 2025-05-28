@@ -90,14 +90,20 @@ export async function handler(
 // returns a signature as a string (strings can be used to represent different scheme signatures)
 async function validateRequest(request: ValidationRequest): Promise<string> {
     switch (request.kind) {
-        case "rwa-mint":
+        case "price-update":
+        case "rwa-mint": {
             const tx = decodeTx(request.tx)
-            const signature = await validateRWAMint(tx)
+            const cardanoClient = await makeCardanoClient(tx)
+            await tx.recover(cardanoClient)
 
-            return bytesToHex(signature.bytes)
-        case "price-update": {
-            const tx = decodeTx(request.tx)
-            const signature = await validatePriceUpdate(tx)
+            const signature = await (async () => {
+                switch (request.kind) {
+                    case "price-update":
+                        return await validatePriceUpdate(tx, cardanoClient)
+                    case "rwa-mint":
+                        return await validateRWAMint(tx, cardanoClient)
+                }
+            })()
 
             return bytesToHex(signature.bytes)
         }
@@ -106,21 +112,26 @@ async function validateRequest(request: ValidationRequest): Promise<string> {
     }
 }
 
-async function validatePriceUpdate(tx: Tx): Promise<Signature> {
+async function validatePriceUpdate(
+    tx: Tx,
+    cardanoClient: BlockfrostV0Client
+): Promise<Signature> {
     if (!tx.body.minted.isZero()) {
         throw new Error("unexpected mints/burns")
     }
 
-    await verifyPrices(tx)
+    await verifyPrices(tx, cardanoClient)
 
     return await signCardanoTx(tx)
 }
 
-async function verifyPrices(tx: Tx): Promise<void> {
+async function verifyPrices(
+    tx: Tx,
+    cardanoClient: BlockfrostV0Client
+): Promise<void> {
     const prices: Record<string, number> = {}
 
     // a BlockfrostV0Client is used to get minswap price data
-    const cardanoClient = await makeCardanoClient(tx)
 
     const addr = makeShelleyAddress(DVP_ASSETS_VALIDATOR_ADDRESS)
 
@@ -261,7 +272,10 @@ function decodeRWADatum(
     return state.Cip68.state
 }
 
-async function validateRWAMint(tx: Tx): Promise<Signature> {
+async function validateRWAMint(
+    tx: Tx,
+    cardanoClient: BlockfrostV0Client
+): Promise<Signature> {
     console.log("validating RWA mint request...")
 
     const mintedAssetClasses = tx.body.minted.assetClasses.filter(
@@ -282,8 +296,6 @@ async function validateRWAMint(tx: Tx): Promise<Signature> {
     const isMainnet = isMainnetTx(tx)
     const addr = makeShelleyAddress(isMainnet, vh)
     const metadataAssetClass = makeRWAMetadataAssetClass(mph, ticker)
-
-    const cardanoClient = await makeCardanoClient(tx)
 
     const metadataUtxo = expectDefined(
         (
