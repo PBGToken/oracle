@@ -5,7 +5,7 @@ export function SubscriptionsPanel() {
     return (
         <StyledSubscriptionsPanel>
             {/*<SubscriptionItem stage="Mainnet" />*/}
-            {/*<SubscriptionItem stage="Beta" />*/}
+            {<SubscriptionItem stage="Beta" />}
             <SubscriptionItem stage="Preprod" />
         </StyledSubscriptionsPanel>
     )
