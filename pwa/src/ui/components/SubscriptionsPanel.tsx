@@ -4,9 +4,9 @@ import { SubscriptionItem } from "./SubscriptionItem"
 export function SubscriptionsPanel() {
     return (
         <StyledSubscriptionsPanel>
-            {/*<SubscriptionItem stage="Mainnet" />*/}
-            {<SubscriptionItem stage="Beta" />}
             <SubscriptionItem stage="Preprod" />
+            <SubscriptionItem stage="Beta" />
+            <SubscriptionItem stage="Mainnet" />
         </StyledSubscriptionsPanel>
     )
 }
