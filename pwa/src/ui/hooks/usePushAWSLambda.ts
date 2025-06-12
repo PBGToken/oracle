@@ -81,8 +81,26 @@ export function usePushAWSLambda(): UseMutationResult<
     })
 }
 
+function trimSuffix(str: string, suff: string): string {
+    while (str.endsWith(suff)) {
+        str = str.slice(0, str.length - suff.length)
+    }
+
+    return str
+}
+
+function getBaseURL(): string {
+    let base = window.location.href
+
+    base = trimSuffix(base, "/")
+    base = trimSuffix(base, "index.html")
+    base = trimSuffix(base, "/")
+
+    return base
+}
+
 async function getZipFromUrl(): Promise<Uint8Array> {
-    const url = `${window.location.href}/aws-validator.js`
+    const url = `${getBaseURL()}/aws-validator.js`
     const response = await fetch(url)
 
     if (!response.ok || response.status >= 400) {
