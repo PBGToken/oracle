@@ -101,7 +101,7 @@ async function validateRequest(request: ValidationRequest): Promise<string> {
         case "rwa-mint": {
             const tx = decodeTx(request.tx)
             const cardanoClient = await makeCardanoClient()
-            await tx.recover(cardanoClient)
+            //await tx.recover(cardanoClient)
 
             const signature = await (async () => {
                 switch (request.kind) {
@@ -137,6 +137,14 @@ async function verifyPrices(
     cardanoClient: BlockfrostV0Client
 ): Promise<void> {
     const prices: Record<string, number> = {}
+
+    const mintedAssetClasses = tx.body.minted.assetClasses.filter(
+        (ac) => !ac.isEqual(ADA)
+    )
+
+    if (mintedAssetClasses.length != 0) {
+        throw new Error("can't mint while updating price feed")
+    }
 
     // a BlockfrostV0Client is used to get minswap price data
 
