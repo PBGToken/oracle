@@ -57,6 +57,6 @@
         "vite-plugin-static-copy": "^2.2.0"
     },
     "dependencies": {
-        "@pbgtoken/rwa-contract": "^1.0.2"
+        "@pbgtoken/rwa-contract": "^1.0.3"
     }
 }

@@ -27,8 +27,17 @@ import {
 } from "@helios-lang/tx-utils"
 import { expectDefined } from "@helios-lang/type-utils"
 import { findPool, getAllV2Pools, Pool } from "@helios-lang/minswap"
-import { expectIntData, expectListData, UplcData } from "@helios-lang/uplc"
-import { tokenized_account } from "@pbgtoken/rwa-contract"
+import {
+    expectConstrData,
+    expectIntData,
+    expectListData,
+    UplcData
+} from "@helios-lang/uplc"
+import {
+    makeBitcoinWalletProvider,
+    one_to_one_asset,
+    tokenized_account
+} from "@pbgtoken/rwa-contract"
 import { StrictType } from "@helios-lang/contract-utils"
 
 const MAX_REL_DIFF = 0.01 // 1%
@@ -53,7 +62,12 @@ const DVP_ASSETS_VALIDATOR_ADDRESS = makeShelleyAddress(
 const IS_MAINNET = DVP_ASSETS_VALIDATOR_ADDRESS.mainnet
 
 const _castRWADatum = tokenized_account.$types.State({ isMainnet: IS_MAINNET }) // doesn't matter, only used for type
-type RWADatum = StrictType<typeof _castRWADatum>
+const _cast1t1RWADatum = one_to_one_asset.$types.State({
+    isMainnet: IS_MAINNET
+})
+type RWADatum =
+    | StrictType<typeof _castRWADatum>
+    | StrictType<typeof _cast1t1RWADatum>
 
 type ValidationRequest = {
     kind: "rwa-mint" | "price-update"
@@ -269,14 +283,39 @@ function makeRWAMetadataAssetClass(mph: MintingPolicyHash, ticker: string) {
 }
 
 function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
-    const castDatum = tokenized_account.$types.Metadata({
-        isMainnet: IS_MAINNET
-    })
-    const datum = expectDefined(data, `not metadata datum for RWA ${ticker}`)
+    try {
+        const castDatum = tokenized_account.$types.Metadata({
+            isMainnet: IS_MAINNET
+        })
+        const datum = expectDefined(
+            data,
+            `not metadata datum for RWA ${ticker}`
+        )
 
-    const state = castDatum.fromUplcData(datum)
+        const state = castDatum.fromUplcData(datum)
 
-    return state.Cip68.state
+        if (state.Cip68.state.type != "CardanoWallet") {
+            throw new Error(`unexpected RWA type ${state.Cip68.state.type}`)
+        }
+
+        return state.Cip68.state
+    } catch (_) {
+        const castDatum = one_to_one_asset.$types.Metadata({
+            isMainnet: IS_MAINNET
+        })
+        const datum = expectDefined(
+            data,
+            `not metadata datum for RWA ${ticker}`
+        )
+
+        const state = castDatum.fromUplcData(datum)
+
+        if (state.Cip68.state.type != "BitcoinNative") {
+            throw new Error(`unexpected RWA type ${state.Cip68.state.type}`)
+        }
+
+        return state.Cip68.state
+    }
 }
 
 async function validateRWAMint(
@@ -309,13 +348,6 @@ async function validateRWAMint(
         )[0]
     )
 
-    const datum = decodeRWADatum(ticker, metadataUtxo.datum?.data)
-
-    if (datum.account.length < 16) {
-        // TODO: actually check reserves
-        throw new Error("invalid reservesAccount hash")
-    }
-
     // only one witness allowed, which must be the same validator
     const allScripts = tx.witnesses.allScripts
     if (allScripts.length != 1) {
@@ -329,6 +361,41 @@ async function validateRWAMint(
 
     if (!equalsBytes(script.hash(), mph.bytes)) {
         throw new Error("script hash bytes not equal to minting policy")
+    }
+
+    const datum = decodeRWADatum(ticker, metadataUtxo.datum?.data)
+
+    switch (datum.type) {
+        case "CardanoWallet": {
+            if (datum.account.length < 16) {
+                // TODO: actually check reserves
+                throw new Error("invalid reservesAccount hash")
+            }
+            break
+        }
+        case "BitcoinNative": {
+            const bitcoinProvider = makeBitcoinWalletProvider(
+                decodeUtf8(datum.account),
+                undefined as any
+            )
+
+            const sats = BigInt(await bitcoinProvider.getSats())
+
+            tx.witnesses.redeemers.forEach((redeemer) => {
+                if (redeemer.kind == "TxSpendingRedeemer") {
+                    const redeemerData = expectConstrData(redeemer.data, 1, 1)
+                    const RCardano = expectIntData(redeemerData.fields[0]).value
+
+                    if (RCardano != sats) {
+                        throw new Error("unexpected reserves in redeemer")
+                    }
+                }
+            })
+
+            break
+        }
+        default:
+            throw new Error(`unrecognized RWA type ${datum.type}`)
     }
 
     //const bridgeRegistration = await getOldestBridgeRegistration(
@@ -398,7 +465,9 @@ async function validateRWAMint(
 
     const signature = await signCardanoTx(tx)
 
-    const formattedQty = (Number(qty) / Math.pow(10, 6)).toFixed(6)
+    const formattedQty = (
+        Number(qty) / Math.pow(10, Number(datum.decimals))
+    ).toFixed(6)
 
     console.log(`minted RWA: ${formattedQty} ${ticker}`)
 
