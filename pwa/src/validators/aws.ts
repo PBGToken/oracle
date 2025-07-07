@@ -61,7 +61,9 @@ const DVP_ASSETS_VALIDATOR_ADDRESS = makeShelleyAddress(
 
 const IS_MAINNET = DVP_ASSETS_VALIDATOR_ADDRESS.mainnet
 
-const castAccountAggregateState = account_aggregate.$types.State({ isMainnet: IS_MAINNET }) // doesn't matter, only used for type
+const castAccountAggregateState = account_aggregate.$types.State({
+    isMainnet: IS_MAINNET
+}) // doesn't matter, only used for type
 const castWrappedAssetState = wrapped_asset.$types.State({
     isMainnet: IS_MAINNET
 })
@@ -283,7 +285,7 @@ function makeRWAMetadataAssetClass(mph: MintingPolicyHash, ticker: string) {
 }
 
 function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
-    try {
+    /*try {
         const castDatum = account_aggregate.$types.Metadata({
             isMainnet: IS_MAINNET
         })
@@ -299,23 +301,20 @@ function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
         }
 
         return state.Cip68.state
-    } catch (_) {
-        const castDatum = wrapped_asset.$types.Metadata({
-            isMainnet: IS_MAINNET
-        })
-        const datum = expectDefined(
-            data,
-            `not metadata datum for RWA ${ticker}`
-        )
+    } catch (_) {*/
+    const castDatum = wrapped_asset.$types.Metadata({
+        isMainnet: IS_MAINNET
+    })
+    const datum = expectDefined(data, `not metadata datum for RWA ${ticker}`)
 
-        const state = castDatum.fromUplcData(datum)
+    const state = castDatum.fromUplcData(datum)
 
-        if (state.Cip68.state.type != "BitcoinNative") {
-            throw new Error(`unexpected RWA type ${state.Cip68.state.type}`)
-        }
-
-        return state.Cip68.state
+    if (state.Cip68.state.type != "WrappedAsset") {
+        throw new Error(`unexpected RWA type ${state.Cip68.state.type}`)
     }
+
+    return state.Cip68.state
+    //}
 }
 
 async function validateRWAMint(
