@@ -35,8 +35,8 @@ import {
 } from "@helios-lang/uplc"
 import {
     makeBitcoinWalletProvider,
-    one_to_one_asset,
-    tokenized_account
+    wrapped_asset,
+    account_aggregate
 } from "@pbgtoken/rwa-contract"
 import { StrictType } from "@helios-lang/contract-utils"
 
@@ -61,13 +61,13 @@ const DVP_ASSETS_VALIDATOR_ADDRESS = makeShelleyAddress(
 
 const IS_MAINNET = DVP_ASSETS_VALIDATOR_ADDRESS.mainnet
 
-const _castRWADatum = tokenized_account.$types.State({ isMainnet: IS_MAINNET }) // doesn't matter, only used for type
-const _cast1t1RWADatum = one_to_one_asset.$types.State({
+const castAccountAggregateState = account_aggregate.$types.State({ isMainnet: IS_MAINNET }) // doesn't matter, only used for type
+const castWrappedAssetState = wrapped_asset.$types.State({
     isMainnet: IS_MAINNET
 })
 type RWADatum =
-    | StrictType<typeof _castRWADatum>
-    | StrictType<typeof _cast1t1RWADatum>
+    | StrictType<typeof castAccountAggregateState>
+    | StrictType<typeof castWrappedAssetState>
 
 type ValidationRequest = {
     kind: "rwa-mint" | "price-update"
@@ -284,7 +284,7 @@ function makeRWAMetadataAssetClass(mph: MintingPolicyHash, ticker: string) {
 
 function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
     try {
-        const castDatum = tokenized_account.$types.Metadata({
+        const castDatum = account_aggregate.$types.Metadata({
             isMainnet: IS_MAINNET
         })
         const datum = expectDefined(
@@ -300,7 +300,7 @@ function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
 
         return state.Cip68.state
     } catch (_) {
-        const castDatum = one_to_one_asset.$types.Metadata({
+        const castDatum = wrapped_asset.$types.Metadata({
             isMainnet: IS_MAINNET
         })
         const datum = expectDefined(
@@ -366,16 +366,19 @@ async function validateRWAMint(
     const datum = decodeRWADatum(ticker, metadataUtxo.datum?.data)
 
     switch (datum.type) {
-        case "CardanoWallet": {
+        /*case "CardanoWallet": {
             if (datum.account.length < 16) {
                 // TODO: actually check reserves
                 throw new Error("invalid reservesAccount hash")
             }
             break
-        }
-        case "BitcoinNative": {
+        }*/
+        case "WrappedAsset": {
+            if (typeof datum.account != "string") {
+                throw new Error("unexpected accunt format")
+            }
             const bitcoinProvider = makeBitcoinWalletProvider(
-                decodeUtf8(datum.account),
+                datum.account,
                 undefined as any
             )
 
