@@ -36,7 +36,8 @@ import {
 import {
     makeBitcoinWalletProvider,
     wrapped_asset,
-    account_aggregate
+    account_aggregate,
+    makeEthereumERC20AccountProvider
 } from "@pbgtoken/rwa-contract"
 import { StrictType } from "@helios-lang/contract-utils"
 
@@ -376,19 +377,38 @@ async function validateRWAMint(
             if (typeof datum.account != "string") {
                 throw new Error("unexpected accunt format")
             }
-            const bitcoinProvider = makeBitcoinWalletProvider(
-                datum.account,
-                undefined as any
-            )
 
-            const sats = BigInt(await bitcoinProvider.getSats())
+            if (!("venue" in datum)) {
+                throw new Error("unexpected datum format")
+            }
+
+            let n = 0n
+            if (datum.venue == "Bitcoin") {
+                const bitcoinProvider = makeBitcoinWalletProvider(
+                    datum.account,
+                    undefined as any
+                )
+
+                n = BigInt(await bitcoinProvider.getSats())
+            } else if (datum.venue == "Ethereum") {
+                const erc20Provider = makeEthereumERC20AccountProvider(
+                    datum.account,
+                    undefined as any,
+                    "",
+                    datum.policy as `0x${string}`
+                ) as any
+
+                n = await erc20Provider.getInternalBalance()
+            } else {
+                throw new Error(`unhandled venue ${datum.venue}`)
+            }
 
             tx.witnesses.redeemers.forEach((redeemer) => {
                 if (redeemer.kind == "TxSpendingRedeemer") {
                     const redeemerData = expectConstrData(redeemer.data, 1, 1)
                     const RCardano = expectIntData(redeemerData.fields[0]).value
 
-                    if (RCardano != sats) {
+                    if (RCardano != n) {
                         throw new Error("unexpected reserves in redeemer")
                     }
                 }
