@@ -10,6 +10,7 @@ import {
 } from "@helios-lang/codec-utils"
 import {
     ADA,
+    AssetClass,
     convertUplcDataToAssetClass,
     decodeTx,
     makeAssetClass,
@@ -40,6 +41,7 @@ import {
     makeEthereumERC20AccountProvider
 } from "@pbgtoken/rwa-contract"
 import { StrictType } from "@helios-lang/contract-utils"
+import { type EthereumERC20AccountProvider } from "@pbgtoken/rwa-contract/dist/EthereumERC20AccountProvider"
 
 const MAX_REL_DIFF = 0.01 // 1%
 
@@ -235,17 +237,125 @@ async function verifyPrices(
             const pools = await getPools()
 
             // now fetch the price from minswap
-            const pool = findPool(pools, makeAssetClass("."), assetClass)
+            try {
+                const pool = findPool(pools, makeAssetClass("."), assetClass)
 
-            const adaPerAsset = pool.getPrice(6, decimals)
+                const adaPerAsset = pool.getPrice(6, decimals)
 
-            if (Math.abs((price - adaPerAsset) / adaPerAsset) > MAX_REL_DIFF) {
-                validationErrors.push(
-                    new Error(
-                        `${name} price out of range, expected ~${adaPerAsset.toFixed(6)}, got ${price.toFixed(6)}`
+                if (
+                    Math.abs((price - adaPerAsset) / adaPerAsset) > MAX_REL_DIFF
+                ) {
+                    validationErrors.push(
+                        new Error(
+                            `${name} price out of range, expected ~${adaPerAsset.toFixed(6)}, got ${price.toFixed(6)}`
+                        )
                     )
-                )
-                continue
+                    continue
+                }
+            } catch (e) {
+                if (e instanceof Error && e.message.includes("No pools")) {
+                    // it might be an internal bridged asset
+                    const metadata = await getRWAMetadata(
+                        cardanoClient,
+                        assetClass
+                    )
+
+                    // how to verify the price?
+                    switch (metadata.type) {
+                        case "WrappedAsset":
+                            if (!("venue" in metadata)) {
+                                throw new Error(
+                                    `venue not specified in metadata of ${assetClass.toString()}`
+                                )
+                            }
+
+                            switch (metadata.venue) {
+                                // TODO: add Bitcoin
+                                case "Ethereum":
+                                    const supply = metadata.supply
+
+                                    const provider =
+                                        makeEthereumERC20AccountProvider(
+                                            metadata.account,
+                                            undefined as any,
+                                            "",
+                                            metadata.policy as `0x${string}`
+                                        ) as EthereumERC20AccountProvider
+
+                                    const reserves =
+                                        await provider.getInternalBalance()
+
+                                    switch (metadata.policy) {
+                                        case "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": // USDC
+                                            // get the USDC price
+                                            const coinGeckoResponse =
+                                                await fetch(
+                                                    "https://api.coingecko.com/api/v3/simple/price?ids=cardano%2Cusd-coin&vs_currencies=usd"
+                                                )
+
+                                            const obj =
+                                                await coinGeckoResponse.json()
+
+                                            const usdPerAda = obj.cardano.usd
+                                            const usdPerUSDC =
+                                                obj["usd-coin"].usd
+                                            const adaPerUSDC =
+                                                usdPerUSDC / usdPerAda
+
+                                            // correct for reserves
+                                            const nUSDCReserves =
+                                                Number(reserves) /
+                                                Math.pow(10, 6)
+                                            const totalValueADA =
+                                                adaPerUSDC * nUSDCReserves
+                                            const adaPerWrappedToken =
+                                                totalValueADA /
+                                                (Number(supply) /
+                                                    Math.pow(
+                                                        10,
+                                                        Number(
+                                                            metadata.decimals
+                                                        )
+                                                    ))
+
+                                            if (
+                                                Math.abs(
+                                                    (price -
+                                                        adaPerWrappedToken) /
+                                                        adaPerWrappedToken
+                                                ) > MAX_REL_DIFF
+                                            ) {
+                                                validationErrors.push(
+                                                    new Error(
+                                                        `${name} price out of range, expected ~${adaPerWrappedToken.toFixed(6)}, got ${price.toFixed(6)}`
+                                                    )
+                                                )
+                                                continue
+                                            }
+
+                                            break
+                                        default:
+                                            throw new Error(
+                                                `unhandled policy '${metadata.policy}' for RWA ${assetClass.toString()}`
+                                            )
+                                    }
+
+                                    break
+                                default:
+                                    throw new Error(
+                                        `unhandled venue '${metadata.venue}' for RWA ${assetClass.toString()}`
+                                    )
+                            }
+
+                            break
+                        default:
+                            throw new Error(
+                                `only WrappedAsset RWA's supported, got ${metadata.type} for ${assetClass.toString()}`
+                            )
+                    }
+                } else {
+                    throw e
+                }
             }
         }
     }
@@ -318,6 +428,30 @@ function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
     //}
 }
 
+async function getRWAMetadata(
+    cardanoClient: BlockfrostV0Client,
+    rwaAssetClass: AssetClass
+) {
+    const mph = rwaAssetClass.mph
+    const tokenName = rwaAssetClass.tokenName
+
+    const ticker = decodeUtf8(tokenName.slice(4))
+
+    const vh = makeValidatorHash(mph.bytes)
+
+    const addr = makeShelleyAddress(IS_MAINNET, vh)
+
+    const metadataAssetClass = makeRWAMetadataAssetClass(mph, ticker)
+
+    const metadataUtxo = expectDefined(
+        (
+            await cardanoClient.getUtxosWithAssetClass(addr, metadataAssetClass)
+        )[0]
+    )
+
+    return decodeRWADatum(ticker, metadataUtxo.datum?.data)
+}
+
 async function validateRWAMint(
     tx: Tx,
     cardanoClient: BlockfrostV0Client
@@ -336,17 +470,7 @@ async function validateRWAMint(
     const qty = tx.body.minted.getAssetClassQuantity(mintedAssetClass)
     const mph = mintedAssetClass.mph
     const tokenName = mintedAssetClass.tokenName
-
     const ticker = decodeUtf8(tokenName.slice(4))
-    const vh = makeValidatorHash(mph.bytes)
-    const addr = makeShelleyAddress(IS_MAINNET, vh)
-    const metadataAssetClass = makeRWAMetadataAssetClass(mph, ticker)
-
-    const metadataUtxo = expectDefined(
-        (
-            await cardanoClient.getUtxosWithAssetClass(addr, metadataAssetClass)
-        )[0]
-    )
 
     // only one witness allowed, which must be the same validator
     const allScripts = tx.witnesses.allScripts
@@ -363,9 +487,9 @@ async function validateRWAMint(
         throw new Error("script hash bytes not equal to minting policy")
     }
 
-    const datum = decodeRWADatum(ticker, metadataUtxo.datum?.data)
+    const metadata = await getRWAMetadata(cardanoClient, mintedAssetClass)
 
-    switch (datum.type) {
+    switch (metadata.type) {
         /*case "CardanoWallet": {
             if (datum.account.length < 16) {
                 // TODO: actually check reserves
@@ -374,33 +498,33 @@ async function validateRWAMint(
             break
         }*/
         case "WrappedAsset": {
-            if (typeof datum.account != "string") {
+            if (typeof metadata.account != "string") {
                 throw new Error("unexpected accunt format")
             }
 
-            if (!("venue" in datum)) {
+            if (!("venue" in metadata)) {
                 throw new Error("unexpected datum format")
             }
 
             let n = 0n
-            if (datum.venue == "Bitcoin") {
+            if (metadata.venue == "Bitcoin") {
                 const bitcoinProvider = makeBitcoinWalletProvider(
-                    datum.account,
+                    metadata.account,
                     undefined as any
                 )
 
                 n = BigInt(await bitcoinProvider.getSats())
-            } else if (datum.venue == "Ethereum") {
+            } else if (metadata.venue == "Ethereum") {
                 const erc20Provider = makeEthereumERC20AccountProvider(
-                    datum.account,
+                    metadata.account,
                     undefined as any,
                     "",
-                    datum.policy as `0x${string}`
+                    metadata.policy as `0x${string}`
                 ) as any
 
                 n = await erc20Provider.getInternalBalance()
             } else {
-                throw new Error(`unhandled venue ${datum.venue}`)
+                throw new Error(`unhandled venue ${metadata.venue}`)
             }
 
             tx.witnesses.redeemers.forEach((redeemer) => {
@@ -417,7 +541,7 @@ async function validateRWAMint(
             break
         }
         default:
-            throw new Error(`unrecognized RWA type ${datum.type}`)
+            throw new Error(`unrecognized RWA type ${metadata.type}`)
     }
 
     //const bridgeRegistration = await getOldestBridgeRegistration(
@@ -488,7 +612,7 @@ async function validateRWAMint(
     const signature = await signCardanoTx(tx)
 
     const formattedQty = (
-        Number(qty) / Math.pow(10, Number(datum.decimals))
+        Number(qty) / Math.pow(10, Number(metadata.decimals))
     ).toFixed(6)
 
     console.log(`minted RWA: ${formattedQty} ${ticker}`)
