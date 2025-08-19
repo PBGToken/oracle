@@ -41,7 +41,10 @@ import {
     makeEthereumERC20AccountProvider
 } from "@pbgtoken/rwa-contract"
 import { StrictType } from "@helios-lang/contract-utils"
-import { type EthereumERC20AccountProvider } from "@pbgtoken/rwa-contract/dist/EthereumERC20AccountProvider"
+import {
+    type BitcoinWalletProvider,
+    type EthereumERC20AccountProvider
+} from "@pbgtoken/rwa-contract"
 
 const MAX_REL_DIFF = 0.01 // 1%
 
@@ -70,9 +73,12 @@ const castAccountAggregateState = account_aggregate.$types.State({
 const castWrappedAssetState = wrapped_asset.$types.State({
     isMainnet: IS_MAINNET
 })
+
+type RWADatumWrappedAsset = StrictType<typeof castWrappedAssetState>
+
 type RWADatum =
     | StrictType<typeof castAccountAggregateState>
-    | StrictType<typeof castWrappedAssetState>
+    | RWADatumWrappedAsset
 
 type ValidationRequest = {
     kind: "rwa-mint" | "price-update"
@@ -146,12 +152,12 @@ async function validatePriceUpdate(
         throw new Error("unexpected mints/burns")
     }
 
-    await verifyPrices(tx, cardanoClient)
+    await validatePrices(tx, cardanoClient)
 
     return await signCardanoTx(tx)
 }
 
-async function verifyPrices(
+async function validatePrices(
     tx: Tx,
     cardanoClient: BlockfrostV0Client
 ): Promise<void> {
@@ -254,105 +260,12 @@ async function verifyPrices(
                 }
             } catch (e) {
                 if (e instanceof Error && e.message.includes("No pools")) {
-                    // it might be an internal bridged asset
-                    const metadata = await getRWAMetadata(
+                    await validateRWAPrices(
                         cardanoClient,
-                        assetClass
+                        assetClass,
+                        price,
+                        validationErrors
                     )
-
-                    // how to verify the price?
-                    switch (metadata.type) {
-                        case "WrappedAsset":
-                            if (!("venue" in metadata)) {
-                                throw new Error(
-                                    `venue not specified in metadata of ${assetClass.toString()}`
-                                )
-                            }
-
-                            switch (metadata.venue) {
-                                // TODO: add Bitcoin
-                                case "Ethereum":
-                                    const supply = metadata.supply
-
-                                    const provider =
-                                        makeEthereumERC20AccountProvider(
-                                            metadata.account,
-                                            undefined as any,
-                                            "",
-                                            metadata.policy as `0x${string}`
-                                        ) as EthereumERC20AccountProvider
-
-                                    const reserves =
-                                        await provider.getInternalBalance()
-
-                                    switch (metadata.policy) {
-                                        case "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": // USDC
-                                            // get the USDC price
-                                            const coinGeckoResponse =
-                                                await fetch(
-                                                    "https://api.coingecko.com/api/v3/simple/price?ids=cardano%2Cusd-coin&vs_currencies=usd"
-                                                )
-
-                                            const obj =
-                                                await coinGeckoResponse.json()
-
-                                            const usdPerAda = obj.cardano.usd
-                                            const usdPerUSDC =
-                                                obj["usd-coin"].usd
-                                            const adaPerUSDC =
-                                                usdPerUSDC / usdPerAda
-
-                                            // correct for reserves
-                                            const nUSDCReserves =
-                                                Number(reserves) /
-                                                Math.pow(10, 6)
-                                            const totalValueADA =
-                                                adaPerUSDC * nUSDCReserves
-                                            const adaPerWrappedToken =
-                                                totalValueADA /
-                                                (Number(supply) /
-                                                    Math.pow(
-                                                        10,
-                                                        Number(
-                                                            metadata.decimals
-                                                        )
-                                                    ))
-
-                                            if (
-                                                Math.abs(
-                                                    (price -
-                                                        adaPerWrappedToken) /
-                                                        adaPerWrappedToken
-                                                ) > MAX_REL_DIFF
-                                            ) {
-                                                validationErrors.push(
-                                                    new Error(
-                                                        `${name} price out of range, expected ~${adaPerWrappedToken.toFixed(6)}, got ${price.toFixed(6)}`
-                                                    )
-                                                )
-                                                continue
-                                            }
-
-                                            break
-                                        default:
-                                            throw new Error(
-                                                `unhandled policy '${metadata.policy}' for RWA ${assetClass.toString()}`
-                                            )
-                                    }
-
-                                    break
-                                default:
-                                    throw new Error(
-                                        `unhandled venue '${metadata.venue}' for RWA ${assetClass.toString()}`
-                                    )
-                            }
-
-                            break
-                        default:
-                            throw new Error(
-                                `only WrappedAsset RWA's supported, got ${metadata.type} for ${assetClass.toString()}`
-                            )
-                    }
                 } else {
                     throw e
                 }
@@ -370,6 +283,187 @@ async function verifyPrices(
         "Validated tx with prices ",
         JSON.stringify(prices, undefined, 4)
     )
+}
+
+async function validateRWAPrices(
+    cardanoClient: BlockfrostV0Client,
+    assetClass: AssetClass,
+    price: number,
+    validationErrors: Error[]
+) {
+    // it might be an internal bridged asset
+    const metadata = await getRWAMetadata(cardanoClient, assetClass)
+
+    // how to verify the price?
+    switch (metadata.type) {
+        case "WrappedAsset":
+            if (!("venue" in metadata)) {
+                throw new Error(
+                    `venue not specified in metadata of ${assetClass.toString()}`
+                )
+            }
+
+            switch (metadata.venue) {
+                case "Bitcoin":
+                    await validateBitcoinRWAPrices(
+                        assetClass,
+                        metadata,
+                        price,
+                        validationErrors
+                    )
+                    break
+                case "Ethereum":
+                    await validateEthereumRWAPrices(
+                        assetClass,
+                        metadata,
+                        price,
+                        validationErrors
+                    )
+                    break
+                default:
+                    throw new Error(
+                        `unhandled venue '${metadata.venue}' for RWA ${assetClass.toString()}`
+                    )
+            }
+
+            break
+        default:
+            throw new Error(
+                `only WrappedAsset RWA's supported, got ${metadata.type} for ${assetClass.toString()}`
+            )
+    }
+}
+
+async function validateEthereumRWAPrices(
+    assetClass: AssetClass,
+    metadata: RWADatumWrappedAsset,
+    price: number,
+    validationErrors: Error[]
+) {
+    const provider = makeEthereumERC20AccountProvider(
+        metadata.account,
+        undefined as any,
+        "",
+        metadata.policy as `0x${string}`
+    ) as EthereumERC20AccountProvider
+
+    const reserves = await provider.getInternalBalance()
+
+    switch (metadata.policy) {
+        case "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48": // USDC
+            await validateWrappedUSDCPrice(
+                metadata,
+                reserves,
+                price,
+                validationErrors
+            )
+            break
+        default:
+            throw new Error(
+                `unhandled policy '${metadata.policy}' for RWA ${assetClass.toString()}`
+            )
+    }
+}
+
+async function validateBitcoinRWAPrices(
+    assetClass: AssetClass,
+    metadata: RWADatumWrappedAsset,
+    price: number,
+    validationErrors: Error[]
+) {
+    const provider = makeBitcoinWalletProvider(
+        metadata.account,
+        undefined as any
+    )
+
+    switch (metadata.policy) {
+        case "Native":
+            await validateWrappedBTCPrice(
+                provider,
+                metadata,
+                price,
+                validationErrors
+            )
+            break
+        default:
+            throw new Error(
+                `unhandled policy '${metadata.policy}' for Bitcoin RWA ${assetClass.toString()}`
+            )
+    }
+}
+
+async function validateWrappedBTCPrice(
+    provider: BitcoinWalletProvider,
+    metadata: RWADatumWrappedAsset,
+    price: number,
+    validationErrors: Error[]
+) {
+    const reserves = await provider.getSats()
+
+    // get the BTC price (TODO: all coingecko API calls at once)
+    const coinGeckoResponse = await fetch(
+        "https://api.coingecko.com/api/v3/simple/price?ids=cardano%2Cbitcoin&vs_currencies=usd"
+    )
+
+    const obj = await coinGeckoResponse.json()
+
+    const usdPerAda = obj.cardano.usd
+    const usdPerBTC = obj["bitcoin"].usd
+    const adaPerBTC = usdPerBTC / usdPerAda
+
+    const nBTCReserves = Number(reserves) / Math.pow(10, 8)
+    const totalValueADA = adaPerBTC * nBTCReserves
+
+    const adaPerWrappedToken =
+        totalValueADA /
+        (Number(metadata.supply) / Math.pow(10, Number(metadata.decimals)))
+
+    if (
+        Math.abs((price - adaPerWrappedToken) / adaPerWrappedToken) >
+        MAX_REL_DIFF
+    ) {
+        validationErrors.push(
+            new Error(
+                `${metadata.ticker} price out of range, expected ~${adaPerWrappedToken.toFixed(6)}, got ${price.toFixed(6)}`
+            )
+        )
+    }
+}
+
+async function validateWrappedUSDCPrice(
+    metadata: RWADatumWrappedAsset,
+    reserves: bigint,
+    price: number,
+    validationErrors: Error[]
+) {
+    // get the USDC price (TODO: all coingecko API calls at once)
+    const coinGeckoResponse = await fetch(
+        "https://api.coingecko.com/api/v3/simple/price?ids=cardano%2Cusd-coin&vs_currencies=usd"
+    )
+
+    const obj = await coinGeckoResponse.json()
+
+    const usdPerAda = obj.cardano.usd
+    const usdPerUSDC = obj["usd-coin"].usd
+    const adaPerUSDC = usdPerUSDC / usdPerAda
+
+    // correct for reserves
+    const nUSDCReserves = Number(reserves) / Math.pow(10, 6)
+    const totalValueADA = adaPerUSDC * nUSDCReserves
+    const adaPerWrappedToken =
+        totalValueADA /
+        (Number(metadata.supply) / Math.pow(10, Number(metadata.decimals)))
+
+    if (
+        Math.abs((price - adaPerWrappedToken) / adaPerWrappedToken) >
+        MAX_REL_DIFF
+    ) {
+        validationErrors.push(
+            new Error(
+                `${metadata.ticker} price out of range, expected ~${adaPerWrappedToken.toFixed(6)}, got ${price.toFixed(6)}`
+            )
+        )
+    }
 }
 
 async function makeCardanoClient(): Promise<BlockfrostV0Client> {
