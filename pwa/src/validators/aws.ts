@@ -358,6 +358,14 @@ async function validateEthereumRWAPrices(
                 validationErrors
             )
             break
+        case "0x45804880De22913dAFE09f4980848ECE6EcbAf78": // PAXG
+            await validateWrappedPAXGPrice(
+                metadata,
+                reserves,
+                price,
+                validationErrors
+            )
+            break
         default:
             throw new Error(
                 `unhandled policy '${metadata.policy}' for RWA ${assetClass.toString()}`
@@ -398,36 +406,15 @@ async function validateWrappedBTCPrice(
     price: number,
     validationErrors: Error[]
 ) {
-    const reserves = await provider.getSats()
+    const reserves = BigInt(await provider.getSats())
 
-    // get the BTC price (TODO: all coingecko API calls at once)
-    const coinGeckoResponse = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=cardano%2Cbitcoin&vs_currencies=usd"
+    await validateWrappedTokenPriceWithCoingecko(
+        "bitcoin",
+        metadata,
+        reserves,
+        price,
+        validationErrors
     )
-
-    const obj = await coinGeckoResponse.json()
-
-    const usdPerAda = obj.cardano.usd
-    const usdPerBTC = obj["bitcoin"].usd
-    const adaPerBTC = usdPerBTC / usdPerAda
-
-    const nBTCReserves = Number(reserves) / Math.pow(10, 8)
-    const totalValueADA = adaPerBTC * nBTCReserves
-
-    const adaPerWrappedToken =
-        totalValueADA /
-        (Number(metadata.supply) / Math.pow(10, Number(metadata.decimals)))
-
-    if (
-        Math.abs((price - adaPerWrappedToken) / adaPerWrappedToken) >
-        MAX_REL_DIFF
-    ) {
-        validationErrors.push(
-            new Error(
-                `${metadata.ticker} price out of range, expected ~${adaPerWrappedToken.toFixed(6)}, got ${price.toFixed(6)}`
-            )
-        )
-    }
 }
 
 async function validateWrappedUSDCPrice(
@@ -436,23 +423,62 @@ async function validateWrappedUSDCPrice(
     price: number,
     validationErrors: Error[]
 ) {
-    // get the USDC price (TODO: all coingecko API calls at once)
+    await validateWrappedTokenPriceWithCoingecko(
+        "usd-coin",
+        metadata,
+        reserves,
+        price,
+        validationErrors
+    )
+}
+
+async function validateWrappedPAXGPrice(
+    metadata: RWADatumWrappedAsset,
+    reserves: bigint,
+    price: number,
+    validationErrors: Error[]
+) {
+    await validateWrappedTokenPriceWithCoingecko(
+        "pax-gold",
+        metadata,
+        reserves,
+        price,
+        validationErrors
+    )
+}
+
+/**
+ * @param coinGeckoID
+ * @param metadata
+ * @param reserves
+ * @param price
+ * @param validationErrors
+ */
+async function validateWrappedTokenPriceWithCoingecko(
+    coinGeckoID: string,
+    metadata: RWADatumWrappedAsset,
+    reserves: bigint,
+    price: number,
+    validationErrors: Error[]
+) {
+    // get the token price (TODO: all coingecko API calls at once)
     const coinGeckoResponse = await fetch(
-        "https://api.coingecko.com/api/v3/simple/price?ids=cardano%2Cusd-coin&vs_currencies=usd"
+        `https://api.coingecko.com/api/v3/simple/price?ids=cardano%2C${coinGeckoID}&vs_currencies=usd`
     )
 
     const obj = await coinGeckoResponse.json()
 
     const usdPerAda = obj.cardano.usd
-    const usdPerUSDC = obj["usd-coin"].usd
-    const adaPerUSDC = usdPerUSDC / usdPerAda
+    const usdPerToken = obj[coinGeckoID].usd
+    const adaPerToken = usdPerToken / usdPerAda
+
+    const decimals = Number(metadata.decimals)
 
     // correct for reserves
-    const nUSDCReserves = Number(reserves) / Math.pow(10, 6)
-    const totalValueADA = adaPerUSDC * nUSDCReserves
+    const nTokenReserves = Number(reserves) / Math.pow(10, decimals) // assume same decimals are used as in metadata
+    const totalValueADA = adaPerToken * nTokenReserves
     const adaPerWrappedToken =
-        totalValueADA /
-        (Number(metadata.supply) / Math.pow(10, Number(metadata.decimals)))
+        totalValueADA / (Number(metadata.supply) / Math.pow(10, decimals))
 
     if (
         Math.abs((price - adaPerWrappedToken) / adaPerWrappedToken) >
