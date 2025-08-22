@@ -473,12 +473,13 @@ async function validateWrappedTokenPriceWithCoingecko(
     const adaPerToken = usdPerToken / usdPerAda
 
     const decimals = Number(metadata.decimals)
+    const precision = Math.pow(10, decimals)
 
     // correct for reserves
-    const nTokenReserves = Number(reserves) / Math.pow(10, decimals) // assume same decimals are used as in metadata
-    const totalValueADA = adaPerToken * nTokenReserves
-    const adaPerWrappedToken =
-        totalValueADA / (Number(metadata.supply) / Math.pow(10, decimals))
+    const nTokenReserves = Number(reserves) / precision // assume same decimals are used as in metadata
+    const nTokenSupply = Number(metadata.supply) / precision
+    const totalValueADA = adaPerToken * Math.min(nTokenReserves, nTokenSupply)
+    const adaPerWrappedToken = totalValueADA / nTokenSupply
 
     if (
         Math.abs((price - adaPerWrappedToken) / adaPerWrappedToken) >
