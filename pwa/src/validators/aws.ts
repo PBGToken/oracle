@@ -157,6 +157,19 @@ async function validatePriceUpdate(
     return await signCardanoTx(tx)
 }
 
+// if direct validation fails if these assets, fall back to using Coingecko
+const COINGECKO_ASSETS: Record<string, { coingeckoId: string }> = {
+    SNEK: {
+        coingeckoId: "snek"
+    },
+    USDM: {
+        coingeckoId: "usdm-2"
+    },
+    WMTX: {
+        coingeckoId: "world-mobile-token"
+    }
+}
+
 async function validatePrices(
     tx: Tx,
     cardanoClient: BlockfrostV0Client
@@ -242,7 +255,7 @@ async function validatePrices(
 
             const pools = await getPools()
 
-            // now fetch the price from minswap
+            // assume first that the asset is traded on minswap, and look for a minswap pool
             try {
                 const pool = findPool(pools, makeAssetClass("."), assetClass)
 
@@ -259,15 +272,33 @@ async function validatePrices(
                     continue
                 }
             } catch (e) {
-                if (e instanceof Error && e.message.includes("No pools")) {
-                    console.log(`No pools found for ${name}, falling back to validating RWA price`)
+                // if minswap pool is found, either something is wrong with minswap (and we fall back to coingecko), or it is an in-house RWA (which will never be traded publicly)
+                if (
+                    e instanceof Error &&
+                    e.message.toLowerCase().includes("no pools")
+                ) {
+                    if (name in COINGECKO_ASSETS) {
+                        console.log(
+                            `No pools found for ${name}, falling back to validating via coingecko price`
+                        )
 
-                    await validateRWAPrices(
-                        cardanoClient,
-                        assetClass,
-                        price,
-                        validationErrors
-                    )
+                        await validateCoingeckoPrice(
+                            name,
+                            price,
+                            validationErrors
+                        )
+                    } else {
+                        console.log(
+                            `No pools found for ${name}, assuming it is an in-house RWA`
+                        )
+
+                        await validateRWAPrices(
+                            cardanoClient,
+                            assetClass,
+                            price,
+                            validationErrors
+                        )
+                    }
                 } else {
                     throw e
                 }
@@ -447,6 +478,33 @@ async function validateWrappedPAXGPrice(
         price,
         validationErrors
     )
+}
+
+async function validateCoingeckoPrice(
+    name: string,
+    price: number,
+    validationErrors: Error[]
+) {
+    const { coingeckoId } = COINGECKO_ASSETS[name]
+
+    // get the token price (TODO: all coingecko API calls at once)
+    const coinGeckoResponse = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=cardano%2C${coingeckoId}&vs_currencies=usd`
+    )
+
+    const obj = await coinGeckoResponse.json()
+
+    const usdPerAda = obj.cardano.usd
+    const usdPerToken = obj[coingeckoId].usd
+    const adaPerToken = usdPerToken / usdPerAda
+
+    if (Math.abs((price - adaPerToken) / adaPerToken) > MAX_REL_DIFF) {
+        validationErrors.push(
+            new Error(
+                `${name} price out of range, expected ~${adaPerToken.toFixed(6)}, got ${price.toFixed(6)}`
+            )
+        )
+    }
 }
 
 /**
