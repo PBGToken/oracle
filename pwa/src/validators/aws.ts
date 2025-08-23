@@ -260,6 +260,8 @@ async function validatePrices(
                 }
             } catch (e) {
                 if (e instanceof Error && e.message.includes("No pools")) {
+                    console.log(`No pools found for ${name}, falling back to validating RWA price`)
+
                     await validateRWAPrices(
                         cardanoClient,
                         assetClass,
