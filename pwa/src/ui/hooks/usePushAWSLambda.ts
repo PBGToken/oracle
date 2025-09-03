@@ -22,6 +22,7 @@ import { createAuthToken, Secrets } from "./secrets"
 import { StageName, stages } from "./stages"
 
 const AWS_REGION = "us-east-1"
+const NODEJS_RUNTIME = "nodejs22.x"
 
 type PushAWSLambdaArgs = {
     stage: StageName
@@ -172,7 +173,7 @@ async function createLambdaFromJSFile(
             const result = await lambdaClient.send(
                 new CreateFunctionCommand({
                     FunctionName: functionName,
-                    Runtime: "nodejs18.x",
+                    Runtime: NODEJS_RUNTIME,
                     Role: roleArn,
                     Handler: "index.handler",
                     Code: {
