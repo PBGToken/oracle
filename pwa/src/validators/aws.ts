@@ -868,7 +868,18 @@ async function validateRWAMint(
                     undefined as any
                 )
 
-                n = BigInt(await bitcoinProvider.getSats())
+                switch (metadata.policy) {
+                    case "Native":
+                        n = correctForDecimals(
+                            BigInt(await bitcoinProvider.getSats()),
+                            8 - Number(metadata.decimals)
+                        )
+                        break
+                    default:
+                        throw new Error(
+                            `unhandled Bitcoin policy ${metadata.policy}`
+                        )
+                }
             } else if (metadata.venue == "Ethereum") {
                 const erc20Provider = makeEthereumERC20AccountProvider(
                     metadata.account,
@@ -877,7 +888,26 @@ async function validateRWAMint(
                     metadata.policy as `0x${string}`
                 ) as any
 
-                n = await erc20Provider.getInternalBalance()
+                switch (metadata.policy) {
+                    // USDC
+                    case "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48":
+                        n = correctForDecimals(
+                            await erc20Provider.getInternalBalance(),
+                            6 - Number(metadata.decimals)
+                        )
+                        break
+                    // PAXG
+                    case "0x45804880De22913dAFE09f4980848ECE6EcbAf78":
+                        n = correctForDecimals(
+                            await erc20Provider.getInternalBalance(),
+                            18 - Number(metadata.decimals)
+                        )
+                        break
+                    default:
+                        throw new Error(
+                            `unhandled Ethereum policy ${metadata.policy}`
+                        )
+                }
             } else {
                 throw new Error(`unhandled venue ${metadata.venue}`)
             }
@@ -885,6 +915,8 @@ async function validateRWAMint(
             tx.witnesses.redeemers.forEach((redeemer) => {
                 if (redeemer.kind == "TxSpendingRedeemer") {
                     const redeemerData = expectConstrData(redeemer.data, 1, 1)
+
+                    // RCardano is the number of reserves using supply-side decimals
                     const RCardano = expectIntData(redeemerData.fields[0]).value
 
                     if (RCardano != n) {
@@ -973,4 +1005,16 @@ async function validateRWAMint(
     console.log(`minted RWA: ${formattedQty} ${ticker}`)
 
     return signature
+}
+
+// if p > 0 -> the reserves side uses more decimals than the Cardano side -> make N smaller
+// if p < 0 -> the reserves side uses less decimals than the Cardano side -> make N larger
+function correctForDecimals(N: bigint, p: number): bigint {
+    if (p < 0) {
+        return correctForDecimals(N * 10n, p + 1)
+    } else if (p > 0) {
+        return correctForDecimals(N / 10n, p - 1)
+    } else {
+        return N
+    }
 }
