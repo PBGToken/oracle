@@ -612,6 +612,7 @@ async function validateWrappedBTCPrice(
         "bitcoin",
         metadata,
         reserves,
+        8,
         price,
         validationErrors
     )
@@ -629,6 +630,7 @@ function validateWrappedUSDCPrice(
         "usd-coin",
         metadata,
         reserves,
+        6,
         price,
         validationErrors
     )
@@ -646,6 +648,7 @@ function validateWrappedPAXGPrice(
         "pax-gold",
         metadata,
         reserves,
+        18,
         price,
         validationErrors
     )
@@ -686,6 +689,7 @@ function validateWrappedTokenPriceWithCoingecko(
     coinGeckoID: string,
     metadata: RWADatumWrappedAsset,
     reserves: bigint,
+    reservesDecimals: number,
     price: number,
     validationErrors: Error[]
 ) {
@@ -695,12 +699,13 @@ function validateWrappedTokenPriceWithCoingecko(
     const usdPerToken = obj[coinGeckoID].usd
     const adaPerToken = usdPerToken / usdPerAda
 
-    const decimals = Number(metadata.decimals)
-    const precision = Math.pow(10, decimals)
+    const reservesPrecision = Math.pow(10, reservesDecimals)
+    const supplyDecimals = Number(metadata.decimals)
+    const supplyPrecision = Math.pow(10, supplyDecimals)
 
-    // correct for reserves
-    const nTokenReserves = Number(reserves) / precision // assume same decimals are used as in metadata
-    const nTokenSupply = Number(metadata.supply) / precision
+    // correct for reserves, reserves can have other number of decimals than supply though
+    const nTokenReserves = Number(reserves) / reservesPrecision // assume same decimals are used as in metadata
+    const nTokenSupply = Number(metadata.supply) / supplyPrecision
 
     let adaPerWrappedToken = adaPerToken
 
