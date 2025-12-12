@@ -168,6 +168,9 @@ const COINGECKO_ASSETS: Record<string, { coingeckoId: string }> = {
     },
     WMTX: {
         coingeckoId: "world-mobile-token"
+    },
+    NIGHT: {
+        coingeckoId: "midnight-3"
     }
 }
 
