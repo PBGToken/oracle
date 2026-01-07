@@ -174,6 +174,22 @@ const COINGECKO_ASSETS: Record<string, { coingeckoId: string }> = {
     }
 }
 
+const COINBASE_ASSETS: Record<string, { coinbaseSymbol: string }> = {
+    // Target: BTC/USD
+    BTC: { coinbaseSymbol: "BTC" },
+    wBTC: { coinbaseSymbol: "BTC" },
+
+    // Target: ETH/USD
+    ETH: { coinbaseSymbol: "ETH" },
+    wETH: { coinbaseSymbol: "ETH" },
+
+    // Target: ADA/USD
+    ADA: { coinbaseSymbol: "ADA" },
+    tADA: { coinbaseSymbol: "ADA" }
+}
+
+const COINBASE_API_BASE = "https://api.coinbase.com/v2"
+
 type PriceToValidate = {
     name: string // i.e. the ticker
     assetClass: AssetClass // the on-chain asset class
@@ -206,11 +222,19 @@ async function validatePrices(
     const [pricesToValidate, validationErrors, prices] =
         await collectPricesToValidate(cardanoClient, assetGroupOutputs)
 
+    // Fetch Coinbase prices in parallel with Minswap validation for efficiency
+    const coinbasePricesPromise = fetchCoinbasePrices()
+
     await tryValidatingWithMinswapPools(
         cardanoClient,
         pricesToValidate,
         validationErrors
     )
+
+    const coinbasePrices = await coinbasePricesPromise
+    validateCoinbasePrices(coinbasePrices, pricesToValidate, validationErrors)
+
+    // Fetch CoinGecko prices for remaining assets
     const [coinGeckoPrices, rwas] = await prefetchCoinGeckoPricesAndRWAMetadata(
         cardanoClient,
         pricesToValidate
@@ -388,6 +412,91 @@ async function prefetchCoinGeckoPricesAndRWAMetadata(
     const responseObj = await coinGeckoResponse.json()
 
     return [responseObj, rwas]
+}
+
+/**
+ * Fetches exchange rates from Coinbase API
+ * Returns rates as { BTC: number, ETH: number, ADA: number, ... } where values are tokens per USD
+ */
+async function fetchCoinbasePrices(): Promise<Record<string, number>> {
+    try {
+        const response = await fetch(
+            `${COINBASE_API_BASE}/exchange-rates?currency=USD`
+        )
+
+        if (!response.ok) {
+            console.error(
+                `Coinbase API error: ${response.status} ${response.statusText}`
+            )
+            return {}
+        }
+
+        const data = await response.json()
+
+        // data.data.rates contains { BTC: "0.000023", ETH: "0.00043", ADA: "2.5", ... }
+        const rates: Record<string, number> = {}
+        for (const [symbol, rate] of Object.entries(data.data.rates)) {
+            rates[symbol] = parseFloat(rate as string)
+        }
+
+        return rates
+    } catch (e) {
+        console.error("Failed to fetch Coinbase prices:", e)
+        return {}
+    }
+}
+
+/**
+ * Validates prices using Coinbase exchange rates
+ * Removes validated entries from pricesToValidate, adds errors to validationErrors
+ */
+function validateCoinbasePrices(
+    coinbasePrices: Record<string, number>,
+    pricesToValidate: Record<string, PriceToValidate>,
+    validationErrors: Error[]
+): void {
+    const adaPerUsd = coinbasePrices["ADA"]
+    if (!adaPerUsd || adaPerUsd <= 0) {
+        console.log(
+            "Coinbase ADA rate not available, skipping Coinbase validation"
+        )
+        return
+    }
+
+    for (let name in pricesToValidate) {
+        if (name in COINBASE_ASSETS) {
+            const { coinbaseSymbol } = COINBASE_ASSETS[name]
+            const tokenPerUsd = coinbasePrices[coinbaseSymbol]
+
+            if (!tokenPerUsd || tokenPerUsd <= 0) {
+                console.log(
+                    `Coinbase rate for ${coinbaseSymbol} not available, skipping`
+                )
+                continue
+            }
+
+            const { price } = pricesToValidate[name]
+
+            // Calculate ADA per token:
+            // adaPerUsd = how many ADA you get for 1 USD
+            // tokenPerUsd = how many tokens you get for 1 USD
+            // adaPerToken = adaPerUsd / tokenPerUsd
+            const adaPerToken = adaPerUsd / tokenPerUsd
+
+            if (Math.abs((price - adaPerToken) / adaPerToken) > MAX_REL_DIFF) {
+                validationErrors.push(
+                    new Error(
+                        `${name} price out of range (Coinbase), expected ~${adaPerToken.toFixed(6)}, got ${price.toFixed(6)}`
+                    )
+                )
+            }
+
+            delete pricesToValidate[name]
+            console.log(
+                `Validated ${name} price using Coinbase: ${price.toFixed(6)} ADA (expected ~${adaPerToken.toFixed(6)})`
+            )
+        }
+    }
 }
 
 function getRWACoinGeckoID(rwa: RWADatum, assetClass: AssetClass): string {
