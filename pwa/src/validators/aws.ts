@@ -207,35 +207,30 @@ async function validatePrices(
     const [pricesToValidate, validationErrors, prices] =
         await collectPricesToValidate(cardanoClient, assetGroupOutputs)
 
-    // Fetch Coinbase prices in parallel with Minswap validation for efficiency
-    const coinbasePricesPromise = fetchCoinbasePrices()
-
-    await tryValidatingWithMinswapPools(
-        cardanoClient,
-        pricesToValidate,
-        validationErrors
-    )
-
-    const coinbasePrices = await coinbasePricesPromise
+    // Fetch Coinbase prices
+    const coinbasePrices = await fetchCoinbasePrices()
     validateCoinbasePrices(coinbasePrices, pricesToValidate, validationErrors)
 
-    // Fetch CoinGecko prices for remaining assets
-    const [coinGeckoPrices, rwas] = await prefetchCoinGeckoPricesAndRWAMetadata(
-        cardanoClient,
-        pricesToValidate
-    )
+    // TODO: Re-enable other validation methods when needed
+    // Minswap validation (disabled)
+    // await tryValidatingWithMinswapPools(
+    //     cardanoClient,
+    //     pricesToValidate,
+    //     validationErrors
+    // )
 
-    // this is sync, no more fetching from network needed
-    validateCoinGeckoPrices(coinGeckoPrices, pricesToValidate, validationErrors)
-
-    // this is async because reserves must be fetched from other networks
-    // TODO: remove
-    await validateRWAPrices(
-        coinGeckoPrices,
-        rwas,
-        pricesToValidate,
-        validationErrors
-    )
+    // CoinGecko and RWA validation (disabled)
+    // const [coinGeckoPrices, rwas] = await prefetchCoinGeckoPricesAndRWAMetadata(
+    //     cardanoClient,
+    //     pricesToValidate
+    // )
+    // validateCoinGeckoPrices(coinGeckoPrices, pricesToValidate, validationErrors)
+    // await validateRWAPrices(
+    //     coinGeckoPrices,
+    //     rwas,
+    //     pricesToValidate,
+    //     validationErrors
+    // )
 
     for (let name in pricesToValidate) {
         validationErrors.push(new Error(`Unable to validate price of ${name}`))
@@ -323,7 +318,8 @@ async function collectPricesToValidate(
  * @param pricesToValidate
  * @param validationErrors
  */
-async function tryValidatingWithMinswapPools(
+// @ts-expect-error - Temporarily disabled, keeping for future use
+async function _tryValidatingWithMinswapPools(
     cardanoClient: BlockfrostV0Client,
     pricesToValidate: Record<string, PriceToValidate>,
     validationErrors: Error[]
@@ -369,7 +365,8 @@ async function tryValidatingWithMinswapPools(
     }
 }
 
-async function prefetchCoinGeckoPricesAndRWAMetadata(
+// @ts-expect-error - Temporarily disabled, keeping for future use
+async function _prefetchCoinGeckoPricesAndRWAMetadata(
     cardanoClient: BlockfrostV0Client,
     pricesToValidate: Record<string, PriceToValidate>
 ): Promise<[Record<string, Record<string, number>>, Record<string, RWADatum>]> {
@@ -528,8 +525,8 @@ function getRWACoinGeckoID(rwa: RWADatum, assetClass: AssetClass): string {
     }
 }
 
-// sync, because prices have been prefetched
-function validateCoinGeckoPrices(
+// @ts-expect-error - Temporarily disabled, keeping for future use
+function _validateCoinGeckoPrices(
     coinGeckoPrices: Record<string, Record<string, number>>,
     pricesToValidate: Record<string, PriceToValidate>,
     validationErrors: Error[]
@@ -550,7 +547,8 @@ function validateCoinGeckoPrices(
     }
 }
 
-async function validateRWAPrices(
+// @ts-expect-error - Temporarily disabled, keeping for future use
+async function _validateRWAPrices(
     coinGeckoPrices: Record<string, Record<string, number>>,
     rwas: Record<string, RWADatum>,
     pricesToValidate: Record<string, PriceToValidate>,
