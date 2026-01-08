@@ -17,6 +17,7 @@ export function assertValidStageName(str: string): asserts str is StageName {
     }
 }
 
+// TODO: update urls and addresses to metera ones once available
 export const stages: Record<StageName, StageConfig> = {
     Mainnet: {
         baseUrl: "https://api.oracle.token.pbg.io",

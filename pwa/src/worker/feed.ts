@@ -13,17 +13,8 @@ import {
     convertUplcDataToAssetClass,
     makeAssetClass,
     AssetClass,
-    //makeMintingPolicyHash,
-    //makeValidatorHash,
-    //ScriptHash,
-    //TxOutput,
-    //TxInput,
-    //ADA,
     makeTxId,
-    TxId,
-    ADA,
-    makeValidatorHash,
-    MintingPolicyHash
+    TxId
 } from "@helios-lang/ledger"
 import { findPool, getAllV2Pools, Pool } from "@helios-lang/minswap"
 import {
@@ -37,10 +28,7 @@ import {
     expectConstrData,
     expectIntData,
     expectListData,
-    expectMapData,
-    MapData,
-    UplcData
-    //UplcData
+    expectMapData
 } from "@helios-lang/uplc"
 //import {
 //    Contract as EthContract,
@@ -133,10 +121,6 @@ async function handleHeartbeat(
 
 // Any of following can be signed
 //   - a price feed update tx (nothing is minted)
-//   - a bridge mint tx (something is minted)
-//   - a bridge withdrawal tx (bridgeWithdrawal property isn't undefined)
-//   - a bridge price correction tx (TODO)
-//   - a bridge metadata change (TODO)
 async function handleSign(stage: StageName): Promise<void> {
     const privateKey = await getPrivateKey()
     const deviceId = await getDeviceId()
@@ -147,11 +131,11 @@ async function handleSign(stage: StageName): Promise<void> {
         throw new Error("unable to fetch Tx from API")
     }
 
-    if (tx.body.minted.isZero()) {
-        await handleSignDVPPriceUpdate(stage, tx)
-    } else {
-        await handleSignRWAMint(stage, tx)
+    if (!tx.body.minted.isZero()) {
+        throw new Error("unexpected mints/burns in transaction")
     }
+
+    await handleSignDVPPriceUpdate(stage, tx)
 }
 
 /*const BRIDGE_REGISTRATION_POLICY = makeMintingPolicyHash("")
@@ -566,139 +550,6 @@ type BridgeRegistration = {
     return bw
 }*/
 
-async function handleSignRWAMint(stage: StageName, tx: Tx): Promise<void> {
-    const mintedAssetClasses = tx.body.minted.assetClasses.filter(
-        (ac) => !ac.isEqual(ADA)
-    )
-
-    if (mintedAssetClasses.length != 1) {
-        throw new Error("tried to mint more than 1 asset class")
-    }
-
-    const mintedAssetClass = mintedAssetClasses[0]
-    const qty = tx.body.minted.getAssetClassQuantity(mintedAssetClass)
-    const mph = mintedAssetClass.mph
-    const tokenName = mintedAssetClass.tokenName
-
-    const ticker = decodeUtf8(tokenName.slice(4))
-    const vh = makeValidatorHash(mph.bytes)
-    const addr = makeShelleyAddress(stage == "Preprod" ? false : true, vh)
-    const metadataAssetClass = makeRWAMetadataAssetClass(mph, ticker)
-
-    const cardanoClient = await makeCardanoClient(stage)
-
-    const metadataUtxo = expectDefined(
-        (
-            await cardanoClient.getUtxosWithAssetClass(addr, metadataAssetClass)
-        )[0]
-    )
-
-    const datum = decodeRWADatum(ticker, metadataUtxo.datum?.data)
-
-    if (datum.reservesAccount.length < 16) {
-        // TODO: actually check reserves
-        throw new Error("invalid reservesAccount hash")
-    }
-
-    // only one witness allowed, which must be the same validator
-    const allScripts = tx.witnesses.allScripts
-    if (allScripts.length != 1) {
-        throw new Error("only one validator allowed")
-    }
-
-    const script = allScripts[0]
-    if (!("plutusVersion" in script)) {
-        throw new Error("not a UplcProgram")
-    }
-
-    if (!equalsBytes(script.hash(), mph.bytes)) {
-        throw new Error("script hash bytes not equal to minting policy")
-    }
-
-    //const bridgeRegistration = await getOldestBridgeRegistration(
-    //    cardanoClient,
-    //    policy
-    //)
-    //const bridgeMetadata = await getBridgeMetadata(cardanoClient, policy)
-    //
-    //assertMetadataCorrespondsToRegistration(bridgeMetadata, bridgeRegistration)
-    //
-    //const bridgeAddress = makeShelleyAddress(
-    //    cardanoClient.isMainnet(),
-    //    makeValidatorHash(policy)
-    //)
-    //
-    //const stateAssetClass = makeAssetClass(mph, encodeUtf8("state"))
-    //
-    //const bridgeStateInputs = tx.body.inputs.filter(
-    //    (i) =>
-    //        i.value.assets.hasAssetClass(stateAssetClass) &&
-    //        i.address.isEqual(bridgeAddress)
-    //)
-    //if (bridgeStateInputs.length != 1) {
-    //    throw new Error("there can only ne one state input")
-    //}
-    //const oldState = extractBridgeState(bridgeStateInputs[0])
-    //
-    //const bridgeStateOutputs = tx.body.outputs.filter(
-    //    (o) =>
-    //        o.value.assets.hasAssetClass(stateAssetClass) &&
-    //        o.address.isEqual(bridgeAddress)
-    //)
-    //if (bridgeStateOutputs.length != 1) {
-    //    throw new Error("there can only be one state output")
-    //}
-    //
-    //if (bridgeMetadata.network != "Ethereum") {
-    //    throw new Error("not an Ethereum ERC20 bridge")
-    //}
-    //
-    //const contract = await makeERC20Contract(
-    //    stage,
-    //    bridgeMetadata.networkAssetClass
-    //)
-    //
-    //// get the actual safe reserves reserves
-    //const RNetwork = BigInt(
-    //    await contract.balanceOf(bridgeRegistration.reservesAddress)
-    //)
-    //const decimalsNetwork = Number(await contract.decimals())
-    //
-    //if (tx.witnesses.redeemers.length != 1) {
-    //    throw new Error("only one redeemer supported")
-    //}
-    //
-    //const redeemer = tx.witnesses.redeemers[0]
-    //const redeemerData = expectConstrData(redeemer.data, 1, 1)
-    //const RCardano = expectIntData(redeemerData.fields[0]).value
-    //
-    //if (RCardano != RNetwork) {
-    //    throw new Error(
-    //        `invalid redeemer, expected ${RNetwork}, got ${RCardano}`
-    //    )
-    //}
-
-    // validations complete, the tx can be signed
-
-    const id = await signCardanoTx(stage, tx)
-
-    const formattedQty = (Number(qty) / Math.pow(10, 6)).toFixed(6)
-
-    // finally add event to table
-    await appendEvent({
-        stage,
-        hash: id.toHex(),
-        timestamp: Date.now(),
-        prices: {},
-        message: `minted RWA: ${formattedQty} ${ticker}`
-    })
-
-    await showNotification(
-        `${stage}, signed RWA mint`,
-        `minted ${formattedQty} ${ticker}`
-    )
-}
-
 async function signCardanoTx(stage: StageName, tx: Tx): Promise<TxId> {
     const privateKey = await getPrivateKey()
     const deviceId = await getDeviceId()
@@ -1085,55 +936,4 @@ async function putSignature(
     } catch (e) {
         console.error(e)
     }
-}
-
-function makeRWAMetadataAssetClass(mph: MintingPolicyHash, ticker: string) {
-    return makeAssetClass(
-        mph,
-        hexToBytes("000643b0").concat(encodeUtf8(ticker))
-    )
-}
-
-function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
-    const datum = expectDefined(data, `not metadata datum for RWA ${ticker}`)
-
-    const state = expectMapData(expectConstrData(datum).fields[0])
-
-    const supply = expectIntData(
-        getCip68Entry(ticker, state, "current_supply")
-    ).value
-    const last_mint_supply = expectIntData(
-        getCip68Entry(ticker, state, "last_mint_supply")
-    ).value
-    const last_deposit_or_withdrawal = expectByteArrayData(
-        getCip68Entry(ticker, state, "last_deposit_or_withdrawal")
-    ).bytes
-    const reservesAccount = expectByteArrayData(
-        getCip68Entry(ticker, state, "reserves_account")
-    ).bytes
-
-    return {
-        current_supply: supply,
-        last_mint_supply: last_mint_supply,
-        last_deposit_or_withdrawal_tx: last_deposit_or_withdrawal,
-        reservesAccount
-    }
-}
-
-function getCip68Entry(ticker: string, map: MapData, key: string): UplcData {
-    const entry = expectDefined(
-        map.items.find((item) => {
-            return decodeUtf8(expectByteArrayData(item[0]).bytes) == key
-        }),
-        `${key} entry not found in datum of RWA ${ticker}`
-    )
-
-    return entry[1]
-}
-
-type RWADatum = {
-    current_supply: bigint
-    last_mint_supply: bigint
-    last_deposit_or_withdrawal_tx: number[]
-    reservesAccount: number[]
 }

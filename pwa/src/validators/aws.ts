@@ -5,7 +5,6 @@ import {
     bytesToHex,
     decodeUtf8,
     encodeUtf8,
-    equalsBytes,
     hexToBytes
 } from "@helios-lang/codec-utils"
 import {
@@ -29,12 +28,7 @@ import {
 } from "@helios-lang/tx-utils"
 import { expectDefined } from "@helios-lang/type-utils"
 import { findPool, getAllV2Pools } from "@helios-lang/minswap"
-import {
-    expectConstrData,
-    expectIntData,
-    expectListData,
-    UplcData
-} from "@helios-lang/uplc"
+import { expectIntData, expectListData, UplcData } from "@helios-lang/uplc"
 import {
     makeBitcoinWalletProvider,
     wrapped_asset,
@@ -82,7 +76,7 @@ type RWADatum =
     | RWADatumWrappedAsset
 
 type ValidationRequest = {
-    kind: "rwa-mint" | "price-update"
+    kind: "price-update"
     tx: string
 }
 
@@ -123,20 +117,11 @@ export async function handler(
 // returns a signature as a string (strings can be used to represent different scheme signatures)
 async function validateRequest(request: ValidationRequest): Promise<string> {
     switch (request.kind) {
-        case "price-update":
-        case "rwa-mint": {
+        case "price-update": {
             const tx = decodeTx(request.tx)
             const cardanoClient = await makeCardanoClient()
-            //await tx.recover(cardanoClient)
 
-            const signature = await (async () => {
-                switch (request.kind) {
-                    case "price-update":
-                        return await validatePriceUpdate(tx, cardanoClient)
-                    case "rwa-mint":
-                        return await validateRWAMint(tx, cardanoClient)
-                }
-            })()
+            const signature = await validatePriceUpdate(tx, cardanoClient)
 
             return bytesToHex(signature.toCbor())
         }
@@ -244,6 +229,7 @@ async function validatePrices(
     validateCoinGeckoPrices(coinGeckoPrices, pricesToValidate, validationErrors)
 
     // this is async because reserves must be fetched from other networks
+    // TODO: remove
     await validateRWAPrices(
         coinGeckoPrices,
         rwas,
@@ -917,216 +903,4 @@ async function getRWAMetadata(
     )
 
     return decodeRWADatum(ticker, metadataUtxo.datum?.data)
-}
-
-async function validateRWAMint(
-    tx: Tx,
-    cardanoClient: BlockfrostV0Client
-): Promise<Signature> {
-    console.log("validating RWA mint request...")
-
-    const mintedAssetClasses = tx.body.minted.assetClasses.filter(
-        (ac) => !ac.isEqual(ADA)
-    )
-
-    if (mintedAssetClasses.length != 1) {
-        throw new Error("tried to mint more than 1 asset class")
-    }
-
-    const mintedAssetClass = mintedAssetClasses[0]
-    const qty = tx.body.minted.getAssetClassQuantity(mintedAssetClass)
-    const mph = mintedAssetClass.mph
-    const tokenName = mintedAssetClass.tokenName
-    const ticker = decodeUtf8(tokenName.slice(4))
-
-    // only one witness allowed, which must be the same validator
-    const allScripts = tx.witnesses.allScripts
-    if (allScripts.length != 1) {
-        throw new Error("only one validator allowed")
-    }
-
-    const script = allScripts[0]
-    if (!("plutusVersion" in script)) {
-        throw new Error("not a UplcProgram")
-    }
-
-    if (!equalsBytes(script.hash(), mph.bytes)) {
-        throw new Error("script hash bytes not equal to minting policy")
-    }
-
-    const metadata = await getRWAMetadata(cardanoClient, mintedAssetClass)
-
-    switch (metadata.type) {
-        /*case "CardanoWallet": {
-            if (datum.account.length < 16) {
-                // TODO: actually check reserves
-                throw new Error("invalid reservesAccount hash")
-            }
-            break
-        }*/
-        case "WrappedAsset": {
-            if (typeof metadata.account != "string") {
-                throw new Error("unexpected accunt format")
-            }
-
-            if (!("venue" in metadata)) {
-                throw new Error("unexpected datum format")
-            }
-
-            let n = 0n
-            if (metadata.venue == "Bitcoin") {
-                const bitcoinProvider = makeBitcoinWalletProvider(
-                    metadata.account,
-                    undefined as any
-                )
-
-                switch (metadata.policy) {
-                    case "Native":
-                        n = correctForDecimals(
-                            BigInt(await bitcoinProvider.getSats()),
-                            8 - Number(metadata.decimals)
-                        )
-                        break
-                    default:
-                        throw new Error(
-                            `unhandled Bitcoin policy ${metadata.policy}`
-                        )
-                }
-            } else if (metadata.venue == "Ethereum") {
-                const erc20Provider = makeEthereumERC20AccountProvider(
-                    metadata.account,
-                    undefined as any,
-                    "",
-                    metadata.policy as `0x${string}`
-                ) as any
-
-                switch (metadata.policy) {
-                    // USDC
-                    case "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48":
-                        n = correctForDecimals(
-                            await erc20Provider.getInternalBalance(),
-                            6 - Number(metadata.decimals)
-                        )
-                        break
-                    // PAXG
-                    case "0x45804880De22913dAFE09f4980848ECE6EcbAf78":
-                        n = correctForDecimals(
-                            await erc20Provider.getInternalBalance(),
-                            18 - Number(metadata.decimals)
-                        )
-                        break
-                    default:
-                        throw new Error(
-                            `unhandled Ethereum policy ${metadata.policy}`
-                        )
-                }
-            } else {
-                throw new Error(`unhandled venue ${metadata.venue}`)
-            }
-
-            tx.witnesses.redeemers.forEach((redeemer) => {
-                if (redeemer.kind == "TxSpendingRedeemer") {
-                    const redeemerData = expectConstrData(redeemer.data, 1, 1)
-
-                    // RCardano is the number of reserves using supply-side decimals
-                    const RCardano = expectIntData(redeemerData.fields[0]).value
-
-                    if (RCardano != n) {
-                        throw new Error("unexpected reserves in redeemer")
-                    }
-                }
-            })
-
-            break
-        }
-        default:
-            throw new Error(`unrecognized RWA type ${metadata.type}`)
-    }
-
-    //const bridgeRegistration = await getOldestBridgeRegistration(
-    //    cardanoClient,
-    //    policy
-    //)
-    //const bridgeMetadata = await getBridgeMetadata(cardanoClient, policy)
-    //
-    //assertMetadataCorrespondsToRegistration(bridgeMetadata, bridgeRegistration)
-    //
-    //const bridgeAddress = makeShelleyAddress(
-    //    cardanoClient.isMainnet(),
-    //    makeValidatorHash(policy)
-    //)
-    //
-    //const stateAssetClass = makeAssetClass(mph, encodeUtf8("state"))
-    //
-    //const bridgeStateInputs = tx.body.inputs.filter(
-    //    (i) =>
-    //        i.value.assets.hasAssetClass(stateAssetClass) &&
-    //        i.address.isEqual(bridgeAddress)
-    //)
-    //if (bridgeStateInputs.length != 1) {
-    //    throw new Error("there can only ne one state input")
-    //}
-    //const oldState = extractBridgeState(bridgeStateInputs[0])
-    //
-    //const bridgeStateOutputs = tx.body.outputs.filter(
-    //    (o) =>
-    //        o.value.assets.hasAssetClass(stateAssetClass) &&
-    //        o.address.isEqual(bridgeAddress)
-    //)
-    //if (bridgeStateOutputs.length != 1) {
-    //    throw new Error("there can only be one state output")
-    //}
-    //
-    //if (bridgeMetadata.network != "Ethereum") {
-    //    throw new Error("not an Ethereum ERC20 bridge")
-    //}
-    //
-    //const contract = await makeERC20Contract(
-    //    stage,
-    //    bridgeMetadata.networkAssetClass
-    //)
-    //
-    //// get the actual safe reserves reserves
-    //const RNetwork = BigInt(
-    //    await contract.balanceOf(bridgeRegistration.reservesAddress)
-    //)
-    //const decimalsNetwork = Number(await contract.decimals())
-    //
-    //if (tx.witnesses.redeemers.length != 1) {
-    //    throw new Error("only one redeemer supported")
-    //}
-    //
-    //const redeemer = tx.witnesses.redeemers[0]
-    //const redeemerData = expectConstrData(redeemer.data, 1, 1)
-    //const RCardano = expectIntData(redeemerData.fields[0]).value
-    //
-    //if (RCardano != RNetwork) {
-    //    throw new Error(
-    //        `invalid redeemer, expected ${RNetwork}, got ${RCardano}`
-    //    )
-    //}
-
-    // validations complete, the tx can be signed
-
-    const signature = await signCardanoTx(tx)
-
-    const formattedQty = (
-        Number(qty) / Math.pow(10, Number(metadata.decimals))
-    ).toFixed(6)
-
-    console.log(`minted RWA: ${formattedQty} ${ticker}`)
-
-    return signature
-}
-
-// if p > 0 -> the reserves side uses more decimals than the Cardano side -> make N smaller
-// if p < 0 -> the reserves side uses less decimals than the Cardano side -> make N larger
-function correctForDecimals(N: bigint, p: number): bigint {
-    if (p < 0) {
-        return correctForDecimals(N * 10n, p + 1)
-    } else if (p > 0) {
-        return correctForDecimals(N / 10n, p - 1)
-    } else {
-        return N
-    }
 }
