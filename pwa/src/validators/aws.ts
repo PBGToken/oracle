@@ -1,6 +1,10 @@
 // TODO: generalize to other cloud providers (this function is AWS-specific)
 // TODO: make type-safe
-import { type APIGatewayProxyEventV2 } from "aws-lambda"
+import {
+    type APIGatewayProxyResult,
+    type APIGatewayProxyEventV2
+} from "aws-lambda"
+import { Effect, Schema } from "effect"
 import {
     bytesToHex,
     decodeUtf8,
@@ -8,6 +12,7 @@ import {
     equalsBytes,
     hexToBytes
 } from "@helios-lang/codec-utils"
+import { Uplc } from "@helios-lang/effect"
 import {
     ADA,
     AssetClass,
@@ -37,15 +42,22 @@ import {
 } from "@helios-lang/uplc"
 import {
     makeBitcoinWalletProvider,
-    wrapped_asset,
-    account_aggregate,
-    makeEthereumERC20AccountProvider
-} from "@pbgtoken/rwa-contract"
-import { StrictType } from "@helios-lang/contract-utils"
-import {
+    RWAMetadata,
+    makeEthereumERC20AccountProvider,
     type BitcoinWalletProvider,
-    type EthereumERC20AccountProvider
+    type EthereumERC20AccountProvider,
+    WrappedAssetMetadata,
+    SelfReportedAssetMetadata
 } from "@pbgtoken/rwa-contract"
+
+type RWAMetadata = Schema.Schema.Type<typeof RWAMetadata>
+type RWAState = RWAMetadata["state"]
+type WrappedAssetState = Schema.Schema.Type<
+    typeof WrappedAssetMetadata
+>["state"]
+type SelfReportedAssetState = Schema.Schema.Type<
+    typeof SelfReportedAssetMetadata
+>["state"]
 
 const MAX_REL_DIFF = 0.01 // 1%
 
@@ -68,19 +80,6 @@ const DVP_ASSETS_VALIDATOR_ADDRESS = makeShelleyAddress(
 
 const IS_MAINNET = DVP_ASSETS_VALIDATOR_ADDRESS.mainnet
 
-const castAccountAggregateState = account_aggregate.$types.State({
-    isMainnet: IS_MAINNET
-}) // doesn't matter, only used for type
-const castWrappedAssetState = wrapped_asset.$types.State({
-    isMainnet: IS_MAINNET
-})
-
-type RWADatumWrappedAsset = StrictType<typeof castWrappedAssetState>
-
-type RWADatum =
-    | StrictType<typeof castAccountAggregateState>
-    | RWADatumWrappedAsset
-
 type ValidationRequest = {
     kind: "rwa-mint" | "price-update"
     tx: string
@@ -89,7 +88,7 @@ type ValidationRequest = {
 export async function handler(
     event: APIGatewayProxyEventV2,
     _content: any
-): Promise<any> {
+): Promise<APIGatewayProxyResult> {
     try {
         const request: ValidationRequest = JSON.parse(
             expectDefined(event.body, "request body undefined")
@@ -362,9 +361,9 @@ async function tryValidatingWithMinswapPools(
 async function prefetchCoinGeckoPricesAndRWAMetadata(
     cardanoClient: BlockfrostV0Client,
     pricesToValidate: Record<string, PriceToValidate>
-): Promise<[Record<string, Record<string, number>>, Record<string, RWADatum>]> {
+): Promise<[Record<string, Record<string, number>>, Record<string, RWAState>]> {
     const coinGeckoIDs: Set<string> = new Set(["cardano"])
-    const rwas: Record<string, RWADatum> = {}
+    const rwas: Record<string, RWAState> = {}
 
     for (let name in pricesToValidate) {
         if (name in COINGECKO_ASSETS) {
@@ -390,7 +389,7 @@ async function prefetchCoinGeckoPricesAndRWAMetadata(
     return [responseObj, rwas]
 }
 
-function getRWACoinGeckoID(rwa: RWADatum, assetClass: AssetClass): string {
+function getRWACoinGeckoID(rwa: RWAState, assetClass: AssetClass): string {
     // how to verify the price?
     switch (rwa.type) {
         case "WrappedAsset":
@@ -457,7 +456,7 @@ function validateCoinGeckoPrices(
 
 async function validateRWAPrices(
     coinGeckoPrices: Record<string, Record<string, number>>,
-    rwas: Record<string, RWADatum>,
+    rwas: Record<string, RWAState>,
     pricesToValidate: Record<string, PriceToValidate>,
     validationErrors: Error[]
 ): Promise<void> {
@@ -483,57 +482,59 @@ async function validateRWAPrices(
 // still async, because we must fetch actual reserves from other chains
 async function validateRWAPrice(
     coinGeckoPrices: Record<string, Record<string, number>>,
-    metadata: RWADatum,
+    metadata: RWAState,
     assetClass: AssetClass,
     price: number,
     validationErrors: Error[]
 ) {
     // how to verify the price?
-    switch (metadata.type) {
-        case "WrappedAsset":
-            if (!("venue" in metadata)) {
-                throw new Error(
-                    `venue not specified in metadata of ${assetClass.toString()}`
+    if (metadata.type == "WrappedAsset") {
+        switch (metadata.venue) {
+            case "Bitcoin":
+                await validateBitcoinRWAPrices(
+                    coinGeckoPrices,
+                    assetClass,
+                    metadata,
+                    price,
+                    validationErrors
                 )
-            }
-
-            switch (metadata.venue) {
-                case "Bitcoin":
-                    await validateBitcoinRWAPrices(
-                        coinGeckoPrices,
-                        assetClass,
-                        metadata,
-                        price,
-                        validationErrors
-                    )
-                    break
-                case "Ethereum":
-                    await validateEthereumRWAPrices(
-                        coinGeckoPrices,
-                        assetClass,
-                        metadata,
-                        price,
-                        validationErrors
-                    )
-                    break
-                default:
-                    throw new Error(
-                        `unhandled venue '${metadata.venue}' for RWA ${assetClass.toString()}`
-                    )
-            }
-
-            break
-        default:
-            throw new Error(
-                `only WrappedAsset RWA's supported, got ${metadata.type} for ${assetClass.toString()}`
-            )
+                break
+            case "Ethereum":
+                await validateEthereumRWAPrices(
+                    coinGeckoPrices,
+                    assetClass,
+                    metadata,
+                    price,
+                    validationErrors
+                )
+                break
+            default:
+                throw new Error(
+                    `unhandled venue '${metadata.venue}' for RWA ${assetClass.toString()}`
+                )
+        }
+    } else if (metadata.type == "SelfReportedAsset") {
+        switch (metadata.asset) {
+            case "SILVER OZ":
+                await validateSilverRWAPrice(
+                    coinGeckoPrices,
+                    metadata,
+                    price,
+                    validationErrors
+                )
+                break
+        }
+    } else {
+        throw new Error(
+            `only WrappedAsset RWA's supported, got ${metadata.type} for ${assetClass.toString()}`
+        )
     }
 }
 
 async function validateEthereumRWAPrices(
     coinGeckoPrices: Record<string, Record<string, number>>,
     assetClass: AssetClass,
-    metadata: RWADatumWrappedAsset,
+    metadata: WrappedAssetState,
     price: number,
     validationErrors: Error[]
 ) {
@@ -575,7 +576,7 @@ async function validateEthereumRWAPrices(
 async function validateBitcoinRWAPrices(
     coinGeckoPrices: Record<string, Record<string, number>>,
     assetClass: AssetClass,
-    metadata: RWADatumWrappedAsset,
+    metadata: WrappedAssetState,
     price: number,
     validationErrors: Error[]
 ) {
@@ -604,13 +605,13 @@ async function validateBitcoinRWAPrices(
 async function validateWrappedBTCPrice(
     provider: BitcoinWalletProvider,
     coinGeckoPrices: Record<string, Record<string, number>>,
-    metadata: RWADatumWrappedAsset,
+    metadata: WrappedAssetState,
     price: number,
     validationErrors: Error[]
 ) {
     const reserves = BigInt(await provider.getSats())
 
-    await validateWrappedTokenPriceWithCoingecko(
+    validateWrappedTokenPriceWithCoingecko(
         coinGeckoPrices,
         "bitcoin",
         metadata,
@@ -623,7 +624,7 @@ async function validateWrappedBTCPrice(
 
 function validateWrappedUSDCPrice(
     coinGeckoPrices: Record<string, Record<string, number>>,
-    metadata: RWADatumWrappedAsset,
+    metadata: WrappedAssetState,
     reserves: bigint,
     price: number,
     validationErrors: Error[]
@@ -641,7 +642,7 @@ function validateWrappedUSDCPrice(
 
 function validateWrappedPAXGPrice(
     coinGeckoPrices: Record<string, Record<string, number>>,
-    metadata: RWADatumWrappedAsset,
+    metadata: WrappedAssetState,
     reserves: bigint,
     price: number,
     validationErrors: Error[]
@@ -655,6 +656,39 @@ function validateWrappedPAXGPrice(
         price,
         validationErrors
     )
+}
+
+async function validateSilverRWAPrice(
+    coinGeckoPrices: Record<string, Record<string, number>>,
+    metadata: SelfReportedAssetState,
+    price: number,
+    validationErrors: Error[]
+) {
+    const usdPerAda = coinGeckoPrices.cardano.usd
+
+    const response = await fetch("https://api.gold-api.com/price/XAG")
+
+    const obj = Schema.decodeUnknownSync(
+        Schema.Struct({
+            name: Schema.String,
+            price: Schema.Number,
+            symbol: Schema.String,
+            updatedAt: Schema.DateFromString,
+            updatedAtReadable: Schema.String
+        })
+    )(await response.json())
+
+    const usdPerSilverOZ = obj.price
+
+    const adaPerSilverOZ = usdPerSilverOZ / usdPerAda
+
+    if (Math.abs((price - adaPerSilverOZ) / adaPerSilverOZ) > MAX_REL_DIFF) {
+        validationErrors.push(
+            new Error(
+                `${metadata.name} price out of range, expected ~${adaPerSilverOZ.toFixed(3)}, got ${price.toFixed(3)}`
+            )
+        )
+    }
 }
 
 function validateCoinGeckoPrice(
@@ -690,7 +724,7 @@ function validateCoinGeckoPrice(
 function validateWrappedTokenPriceWithCoingecko(
     coinGeckoPrices: Record<string, Record<string, number>>,
     coinGeckoID: string,
-    metadata: RWADatumWrappedAsset,
+    metadata: WrappedAssetState,
     reserves: bigint,
     reservesDecimals: number,
     price: number,
@@ -753,37 +787,17 @@ function makeRWAMetadataAssetClass(mph: MintingPolicyHash, ticker: string) {
     )
 }
 
-function decodeRWADatum(ticker: string, data: UplcData | undefined): RWADatum {
-    /*try {
-        const castDatum = account_aggregate.$types.Metadata({
-            isMainnet: IS_MAINNET
-        })
-        const datum = expectDefined(
-            data,
-            `not metadata datum for RWA ${ticker}`
-        )
-
-        const state = castDatum.fromUplcData(datum)
-
-        if (state.Cip68.state.type != "CardanoWallet") {
-            throw new Error(`unexpected RWA type ${state.Cip68.state.type}`)
-        }
-
-        return state.Cip68.state
-    } catch (_) {*/
-    const castDatum = wrapped_asset.$types.Metadata({
-        isMainnet: IS_MAINNET
-    })
-    const datum = expectDefined(data, `not metadata datum for RWA ${ticker}`)
-
-    const state = castDatum.fromUplcData(datum)
-
-    if (state.Cip68.state.type != "WrappedAsset") {
-        throw new Error(`unexpected RWA type ${state.Cip68.state.type}`)
+function decodeRWADatum(ticker: string, data: UplcData | undefined): RWAState {
+    if (!data) {
+        throw new Error(`RWA datum missing for ${ticker}`)
     }
 
-    return state.Cip68.state
-    //}
+    return Effect.runSync(
+        Uplc.Data.decode(data.toCbor()).pipe(
+            Effect.flatMap(Schema.decode(RWAMetadata)),
+            Effect.map((metadata) => metadata.state)
+        )
+    )
 }
 
 async function getRWAMetadata(
