@@ -374,6 +374,11 @@ async function prefetchCoinGeckoPricesAndRWAMetadata(
 
             rwas[name] = metadata
 
+            if (metadata.type == "SelfReportedAsset") {
+                // doesn't require a coingecko price
+                continue
+            }
+
             // also add coinGeckoIDs for RWA reserves
             coinGeckoIDs.add(getRWACoinGeckoID(metadata, assetClass))
         }
