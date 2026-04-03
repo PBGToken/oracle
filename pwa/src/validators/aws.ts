@@ -528,6 +528,14 @@ async function validateRWAPrice(
                     validationErrors
                 )
                 break
+            case "YEN":
+                await validateYenRWAPrice(
+                    coinGeckoPrices,
+                    metadata,
+                    price,
+                    validationErrors
+                )
+                break
         }
     } else {
         throw new Error(
@@ -691,6 +699,43 @@ async function validateSilverRWAPrice(
         validationErrors.push(
             new Error(
                 `${metadata.name} price out of range, expected ~${adaPerSilverOZ.toFixed(3)}, got ${price.toFixed(3)}`
+            )
+        )
+    }
+}
+
+async function validateYenRWAPrice(
+    coinGeckoPrices: Record<string, Record<string, number>>,
+    metadata: SelfReportedAssetState,
+    price: number,
+    validationErrors: Error[]
+) {
+    const usdPerAda = coinGeckoPrices.cardano.usd
+
+    const response = await fetch("https://api.frankfurter.dev/v2/rate/JPY/USD")
+
+    if (!response.ok) {
+        throw new Error(
+            `failed to fetch JPY/USD rate from Frankfurter (${response.status})`
+        )
+    }
+
+    const obj = Schema.decodeUnknownSync(
+        Schema.Struct({
+            date: Schema.String,
+            base: Schema.String,
+            quote: Schema.String,
+            rate: Schema.Number
+        })
+    )(await response.json())
+
+    const usdPerYen = obj.rate
+    const adaPerYen = usdPerYen / usdPerAda
+
+    if (Math.abs((price - adaPerYen) / adaPerYen) > MAX_REL_DIFF) {
+        validationErrors.push(
+            new Error(
+                `${metadata.name} price out of range, expected ~${adaPerYen.toFixed(6)}, got ${price.toFixed(6)}`
             )
         )
     }
