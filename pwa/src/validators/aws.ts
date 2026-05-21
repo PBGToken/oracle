@@ -536,6 +536,14 @@ async function validateRWAPrice(
                     validationErrors
                 )
                 break
+            case "USD":
+                validateUSDRWAPrice(
+                    coinGeckoPrices,
+                    metadata,
+                    price,
+                    validationErrors
+                )
+                break
         }
     } else {
         throw new Error(
@@ -736,6 +744,24 @@ async function validateYenRWAPrice(
         validationErrors.push(
             new Error(
                 `${metadata.name} price out of range, expected ~${adaPerYen.toFixed(6)}, got ${price.toFixed(6)}`
+            )
+        )
+    }
+}
+
+function validateUSDRWAPrice(
+    coinGeckoPrices: Record<string, Record<string, number>>,
+    metadata: SelfReportedAssetState,
+    price: number,
+    validationErrors: Error[]
+) {
+    const usdPerAda = coinGeckoPrices.cardano.usd
+    const adaPerUsd = 1 / usdPerAda
+
+    if (Math.abs((price - adaPerUsd) / adaPerUsd) > MAX_REL_DIFF) {
+        validationErrors.push(
+            new Error(
+                `${metadata.name} price out of range, expected ~${adaPerUsd.toFixed(6)}, got ${price.toFixed(6)}`
             )
         )
     }
