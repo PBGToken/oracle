@@ -79,6 +79,32 @@ const DVP_ASSETS_VALIDATOR_ADDRESS = makeShelleyAddress(
 )
 
 const IS_MAINNET = DVP_ASSETS_VALIDATOR_ADDRESS.mainnet
+const PBG_V2_PRICE_KEY = "PBGV2"
+const PBG_V2_DECIMALS = 6
+
+type PbgV2StageConfig = {
+    policyId: string
+    tokenName: string
+    priceTokenName: string
+    vaultAddress: string
+    assetClass: string
+    priceAssetClass: string
+}
+
+const PBG_V2_BY_STAGE: Record<"Mainnet" | "Preprod", PbgV2StageConfig> = {
+    Mainnet: makePbgV2StageConfig({
+        policyId: "d05c14bba89ff3b7e468b2628654b6250e00ebab2c8ac552912bda6b",
+        tokenName: "0014df10",
+        vaultAddress:
+            "addr1w8g9c99m4z0l8dlydzex9pj5kcjsuq8t4vkg432jjy4a56cs9zj96"
+    }),
+    Preprod: makePbgV2StageConfig({
+        policyId: "fd0f2fac0d73da5c5f2c5f6c6d8b1d06cd7ac1f66d02977a2ab14982",
+        tokenName: "0014df10",
+        vaultAddress:
+            "addr_test1wr7s7tavp4ea5hzl930kcmvtr5rv67kp7eks99m692c5nqsn0aach"
+    })
+}
 
 type ValidationRequest = {
     kind: "rwa-mint" | "price-update"
@@ -218,6 +244,13 @@ async function validatePrices(
     // this is sync, no more fetching from network needed
     validateCoinGeckoPrices(coinGeckoPrices, pricesToValidate, validationErrors)
 
+    await validatePbgV2Price(
+        cardanoClient,
+        coinGeckoPrices,
+        pricesToValidate,
+        validationErrors
+    )
+
     // this is async because reserves must be fetched from other networks
     await validateRWAPrices(
         coinGeckoPrices,
@@ -276,10 +309,10 @@ async function collectPricesToValidate(
                 expectIntData(priceTimeStampData).value
             )
 
-            const { ticker: name, decimals } = await getAssetClassInfo(
-                cardanoClient,
-                assetClass
-            )
+            const pbgV2Info = getPbgV2AssetInfo(assetClass)
+            const { ticker: name, decimals } =
+                pbgV2Info ??
+                (await getAssetClassInfo(cardanoClient, assetClass))
 
             const price = priceWithoutDecimals / Math.pow(10, 6 - decimals)
 
@@ -317,13 +350,17 @@ async function tryValidatingWithMinswapPools(
     pricesToValidate: Record<string, PriceToValidate>,
     validationErrors: Error[]
 ): Promise<void> {
-    if (Object.keys(pricesToValidate).length == 0) {
+    const names = Object.keys(pricesToValidate).filter(
+        (name) => name != PBG_V2_PRICE_KEY
+    )
+
+    if (names.length == 0) {
         return
     }
 
     const pools = await getAllV2Pools(cardanoClient)
 
-    for (let name in pricesToValidate) {
+    for (let name of names) {
         const { assetClass, price, decimals } = pricesToValidate[name]
 
         // assume first that the asset is traded on minswap, and look for a minswap pool
@@ -368,6 +405,8 @@ async function prefetchCoinGeckoPricesAndRWAMetadata(
     for (let name in pricesToValidate) {
         if (name in COINGECKO_ASSETS) {
             coinGeckoIDs.add(COINGECKO_ASSETS[name].coingeckoId)
+        } else if (name == PBG_V2_PRICE_KEY) {
+            continue
         } else {
             const { assetClass } = pricesToValidate[name]
             const metadata = await getRWAMetadata(cardanoClient, assetClass)
@@ -457,6 +496,42 @@ function validateCoinGeckoPrices(
             delete pricesToValidate[name]
         }
     }
+}
+
+async function validatePbgV2Price(
+    cardanoClient: BlockfrostV0Client,
+    coinGeckoPrices: Record<string, Record<string, number>>,
+    pricesToValidate: Record<string, PriceToValidate>,
+    validationErrors: Error[]
+): Promise<void> {
+    const priceToValidate = pricesToValidate[PBG_V2_PRICE_KEY]
+
+    if (!priceToValidate) {
+        return
+    }
+
+    try {
+        const usdPerAda = coinGeckoPrices.cardano.usd
+        const usdPerPbgV2 = await fetchPbgV2UsdPrice(cardanoClient)
+        const adaPerPbgV2 = usdPerPbgV2 / usdPerAda
+
+        if (
+            Math.abs((priceToValidate.price - adaPerPbgV2) / adaPerPbgV2) >
+            MAX_REL_DIFF
+        ) {
+            validationErrors.push(
+                new Error(
+                    `${PBG_V2_PRICE_KEY} price out of range, expected ~${adaPerPbgV2.toFixed(6)}, got ${priceToValidate.price.toFixed(6)}`
+                )
+            )
+        }
+    } catch (e: any) {
+        validationErrors.push(
+            new Error(`failed to validate ${PBG_V2_PRICE_KEY} price (${e})`)
+        )
+    }
+
+    delete pricesToValidate[PBG_V2_PRICE_KEY]
 }
 
 async function validateRWAPrices(
@@ -837,6 +912,96 @@ function validateWrappedTokenPriceWithCoingecko(
                 `${metadata.ticker} price out of range, expected ~${adaPerWrappedToken.toFixed(6)}, got ${price.toFixed(6)}`
             )
         )
+    }
+}
+
+async function fetchPbgV2UsdPrice(
+    cardanoClient: BlockfrostV0Client
+): Promise<number> {
+    const config = getPbgV2Config()
+    const priceAssetClass = makeAssetClass(config.priceAssetClass)
+    const priceUtxo = expectDefined(
+        (
+            await cardanoClient.getUtxosWithAssetClass(
+                makeShelleyAddress(config.vaultAddress),
+                priceAssetClass
+            )
+        )[0],
+        `V2 PBG price UTxO not found at ${config.vaultAddress}`
+    )
+    const datum = decodePbgV2PriceDatum(
+        expectDefined(
+            priceUtxo.datum?.data,
+            "V2 PBG price UTxO has no inline datum"
+        )
+    )
+
+    if (datum.bottom == 0n) {
+        throw new Error("V2 PBG price datum has zero denominator")
+    }
+
+    return Number(datum.top) / Number(datum.bottom)
+}
+
+function decodePbgV2PriceDatum(data: UplcData): {
+    top: bigint
+    bottom: bigint
+    timestamp: bigint
+} {
+    const fields = getPbgV2PriceDatumFields(data)
+
+    if (fields.length != 3) {
+        throw new Error(`Unexpected V2 PBG price datum length ${fields.length}`)
+    }
+
+    return {
+        top: expectIntData(fields[0]).value,
+        bottom: expectIntData(fields[1]).value,
+        timestamp: expectIntData(fields[2]).value
+    }
+}
+
+function getPbgV2PriceDatumFields(data: UplcData): UplcData[] {
+    try {
+        return expectListData(data).items
+    } catch (_e) {
+        return expectConstrData(data).fields
+    }
+}
+
+function getPbgV2AssetInfo(
+    assetClass: AssetClass
+): { ticker: string; decimals: number } | undefined {
+    if (assetClass.toString() == getPbgV2Config().assetClass) {
+        return {
+            ticker: PBG_V2_PRICE_KEY,
+            decimals: PBG_V2_DECIMALS
+        }
+    }
+
+    return undefined
+}
+
+function getPbgV2Config(): PbgV2StageConfig {
+    return IS_MAINNET ? PBG_V2_BY_STAGE.Mainnet : PBG_V2_BY_STAGE.Preprod
+}
+
+function makePbgV2StageConfig({
+    policyId,
+    tokenName,
+    vaultAddress
+}: {
+    policyId: string
+    tokenName: string
+    vaultAddress: string
+}): PbgV2StageConfig {
+    return {
+        policyId,
+        tokenName,
+        priceTokenName: "5072696365",
+        vaultAddress,
+        assetClass: `${policyId}.${tokenName}`,
+        priceAssetClass: `${policyId}.5072696365`
     }
 }
 
