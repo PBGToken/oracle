@@ -81,6 +81,8 @@ const DVP_ASSETS_VALIDATOR_ADDRESS = makeShelleyAddress(
 const IS_MAINNET = DVP_ASSETS_VALIDATOR_ADDRESS.mainnet
 const PBG_V2_PRICE_KEY = "PBGV2"
 const PBG_V2_DECIMALS = 6
+const PBG_V2_USD_PRICE_URL =
+    "https://prices.pbg.io/prices/spot?asset=PBG&currency=USD&source=portfolio-registry"
 
 type PbgV2StageConfig = {
     policyId: string
@@ -89,6 +91,11 @@ type PbgV2StageConfig = {
     vaultAddress: string
     assetClass: string
     priceAssetClass: string
+}
+
+type PbgV2SpotPriceResponse = {
+    asOf: number
+    price: number
 }
 
 const PBG_V2_BY_STAGE: Record<"Mainnet" | "Preprod", PbgV2StageConfig> = {
@@ -245,7 +252,6 @@ async function validatePrices(
     validateCoinGeckoPrices(coinGeckoPrices, pricesToValidate, validationErrors)
 
     await validatePbgV2Price(
-        cardanoClient,
         coinGeckoPrices,
         pricesToValidate,
         validationErrors
@@ -499,7 +505,6 @@ function validateCoinGeckoPrices(
 }
 
 async function validatePbgV2Price(
-    cardanoClient: BlockfrostV0Client,
     coinGeckoPrices: Record<string, Record<string, number>>,
     pricesToValidate: Record<string, PriceToValidate>,
     validationErrors: Error[]
@@ -512,7 +517,7 @@ async function validatePbgV2Price(
 
     try {
         const usdPerAda = coinGeckoPrices.cardano.usd
-        const usdPerPbgV2 = await fetchPbgV2UsdPrice(cardanoClient)
+        const usdPerPbgV2 = await fetchPbgV2UsdPrice()
         const adaPerPbgV2 = usdPerPbgV2 / usdPerAda
 
         if (
@@ -915,58 +920,26 @@ function validateWrappedTokenPriceWithCoingecko(
     }
 }
 
-async function fetchPbgV2UsdPrice(
-    cardanoClient: BlockfrostV0Client
-): Promise<number> {
-    const config = getPbgV2Config()
-    const priceAssetClass = makeAssetClass(config.priceAssetClass)
-    const priceUtxo = expectDefined(
-        (
-            await cardanoClient.getUtxosWithAssetClass(
-                makeShelleyAddress(config.vaultAddress),
-                priceAssetClass
-            )
-        )[0],
-        `V2 PBG price UTxO not found at ${config.vaultAddress}`
-    )
-    const datum = decodePbgV2PriceDatum(
-        expectDefined(
-            priceUtxo.datum?.data,
-            "V2 PBG price UTxO has no inline datum"
+async function fetchPbgV2UsdPrice(): Promise<number> {
+    const response = await fetch(PBG_V2_USD_PRICE_URL)
+
+    if (!response.ok) {
+        throw new Error(
+            `failed to fetch V2 PBG USD price (${response.status} ${response.statusText})`
         )
-    )
-
-    if (datum.bottom == 0n) {
-        throw new Error("V2 PBG price datum has zero denominator")
     }
 
-    return Number(datum.top) / Number(datum.bottom)
-}
+    const body = (await response.json()) as PbgV2SpotPriceResponse
 
-function decodePbgV2PriceDatum(data: UplcData): {
-    top: bigint
-    bottom: bigint
-    timestamp: bigint
-} {
-    const fields = getPbgV2PriceDatumFields(data)
-
-    if (fields.length != 3) {
-        throw new Error(`Unexpected V2 PBG price datum length ${fields.length}`)
+    if (!Number.isFinite(body.price) || body.price <= 0) {
+        throw new Error(`invalid V2 PBG USD price ${body.price}`)
     }
 
-    return {
-        top: expectIntData(fields[0]).value,
-        bottom: expectIntData(fields[1]).value,
-        timestamp: expectIntData(fields[2]).value
+    if (!Number.isFinite(body.asOf) || body.asOf <= 0) {
+        throw new Error(`invalid V2 PBG USD price timestamp ${body.asOf}`)
     }
-}
 
-function getPbgV2PriceDatumFields(data: UplcData): UplcData[] {
-    try {
-        return expectListData(data).items
-    } catch (_e) {
-        return expectConstrData(data).fields
-    }
+    return body.price
 }
 
 function getPbgV2AssetInfo(
