@@ -1,6 +1,6 @@
 import styled from "styled-components"
 import { StageName } from "../hooks/stages"
-import { PushAWSLambdaButton } from "./PushAWSLambdaButton"
+import { DeployValidatorButton } from "./DeployValidatorButton"
 
 type SubscriptionItemProps = {
     stage: StageName
@@ -10,7 +10,7 @@ export function SubscriptionItem({ stage }: SubscriptionItemProps) {
     return (
         <StyledSubscriptionItem>
             <p>{stage}</p>
-            <PushAWSLambdaButton stage={stage} />
+            <DeployValidatorButton stage={stage} />
         </StyledSubscriptionItem>
     )
 }

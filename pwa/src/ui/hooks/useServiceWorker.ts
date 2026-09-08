@@ -88,6 +88,7 @@ function fetchInternal(
 export function fetchWorker(
     method: "get",
     key:
+        | "cloudConfig"
         | "awsAccessKey"
         | "deviceId"
         | "events"
@@ -102,12 +103,18 @@ export function fetchWorker(
 ): Promise<any>
 export function fetchWorker(
     method: "set",
-    key: "awsAccessKey" | "deviceId" | "isPrimary" | "privateKey",
+    key:
+        | "cloudConfig"
+        | "awsAccessKey"
+        | "deviceId"
+        | "isPrimary"
+        | "privateKey",
     value: any
 ): Promise<any>
 export function fetchWorker(
     method: "get" | "set",
     key:
+        | "cloudConfig"
         | "awsAccessKey"
         | "deviceId"
         | "events"

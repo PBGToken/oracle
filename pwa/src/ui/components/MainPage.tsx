@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react"
 import { styled } from "styled-components"
 import { useServiceWorker } from "../hooks"
-import { AWSAccessKeyForm } from "./AWSAccessKeyForm"
-import { ChangeAWSKeyButton } from "./ChangeAWSKeyButton"
+import { useCloudConfig } from "../hooks/useCloudConfig"
+import { Button } from "./Button"
+import { CloudProviderForm } from "./CloudProviderForm"
 import { ChangeKeyButton } from "./ChangeKeyButton"
 import { Header } from "./Header"
 import { KeyInput } from "./KeyInput"
@@ -10,7 +11,8 @@ import { StatusPanel } from "./StatusPanel"
 import { SubscriptionsPanel } from "./SubscriptionsPanel"
 
 export function MainPage() {
-    const [showDialog, setShowDialog] = useState<"" | "key" | "aws">("")
+    const [showDialog, setShowDialog] = useState<"" | "key" | "cloud">("")
+    const [cloudConfig] = useCloudConfig()
 
     const serviceWorkerStatus = useServiceWorker()
 
@@ -18,8 +20,8 @@ export function MainPage() {
         setShowDialog("key")
     }, [setShowDialog])
 
-    const handleShowChangeAWSKey = useCallback(() => {
-        setShowDialog("aws")
+    const handleShowCloudProvider = useCallback(() => {
+        setShowDialog("cloud")
     }, [setShowDialog])
 
     const handleHideDialog = useCallback(() => {
@@ -32,16 +34,19 @@ export function MainPage() {
 
             {showDialog == "key" ? (
                 <KeyInput onClose={handleHideDialog} />
-            ) : showDialog == "aws" ? (
-                <AWSAccessKeyForm onClose={handleHideDialog} />
+            ) : showDialog == "cloud" ? (
+                <CloudProviderForm onClose={handleHideDialog} />
             ) : (
                 <>
                     <StatusPanel serviceWorkerStatus={serviceWorkerStatus}>
                         <Column>
                             <ChangeKeyButton onChange={handleShowChangeKey} />
-                            <ChangeAWSKeyButton
-                                onChange={handleShowChangeAWSKey}
-                            />
+                            <Button onClick={handleShowCloudProvider}>
+                                Cloud provider:{" "}
+                                {cloudConfig.provider == "netlify"
+                                    ? "Netlify"
+                                    : "AWS"}
+                            </Button>
                         </Column>
                     </StatusPanel>
 

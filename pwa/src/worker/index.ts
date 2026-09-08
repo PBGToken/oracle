@@ -8,6 +8,7 @@ import {
 } from "./auth"
 import {
     getAWSAccessKey,
+    getCloudConfig,
     getDeviceId,
     getIsPrimary,
     getLastHeartbeat,
@@ -17,6 +18,7 @@ import {
     listEvents,
     openDatabase,
     setAWSAccessKey,
+    setCloudConfig,
     setDeviceId,
     setIsPrimary,
     setLastSync,
@@ -59,6 +61,9 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                 switch (method) {
                     case "get":
                         switch (key) {
+                            case "cloudConfig":
+                                handleSuccess(await getCloudConfig())
+                                break
                             case "awsAccessKey":
                                 handleSuccess(await getAWSAccessKey())
                                 break
@@ -102,6 +107,10 @@ scope.addEventListener("message", (event: ExtendableMessageEvent) => {
                         break
                     case "set":
                         switch (key) {
+                            case "cloudConfig":
+                                await setCloudConfig(value)
+                                handleSuccess()
+                                break
                             case "awsAccessKey":
                                 await setAWSAccessKey(value[0], value[1])
                                 handleSuccess()

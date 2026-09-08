@@ -54,7 +54,7 @@ export function usePushAWSLambda(): UseMutationResult<
             const functionName = `${stage}PBGOracleValidator`
             const roleName = `${functionName}Role`
 
-            const zipBuffer = await getZipFromUrl()
+            const zipBuffer = await getValidatorZip()
 
             const roleArn = await getOrCreateBasicLambdaRole(
                 roleName,
@@ -100,7 +100,9 @@ function getBaseURL(): string {
     return base
 }
 
-async function getZipFromUrl(): Promise<Uint8Array> {
+export async function getValidatorZip(
+    entryFilename: string = "index.js"
+): Promise<Uint8Array> {
     const url = `${getBaseURL()}/aws-validator.js`
     const response = await fetch(url)
 
@@ -111,7 +113,7 @@ async function getZipFromUrl(): Promise<Uint8Array> {
     const jsContent = await response.text()
 
     const zip = new JSZip()
-    zip.file("index.js", jsContent)
+    zip.file(entryFilename, jsContent)
 
     const zipped = await zip.generateAsync({ type: "uint8array" })
 
@@ -331,7 +333,7 @@ async function getOrCreateBasicLambdaRole(
     }
 }
 
-async function syncFunctionURL(
+export async function syncFunctionURL(
     functionURL: string,
     stageURL: string,
     privateKey: string
@@ -362,7 +364,7 @@ async function syncFunctionURL(
 }
 
 // undefined return value signifies unauthorized
-async function fetchPlatformSecrets(
+export async function fetchPlatformSecrets(
     platformURL: string,
     privateKey: string
 ): Promise<Secrets> {

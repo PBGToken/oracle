@@ -1,4 +1,5 @@
 export { useAWSAccessKey } from "./useAWSAccessKey"
+export { useCloudConfig } from "./useCloudConfig"
 export { useDeviceId } from "./useDeviceId"
 export { useEvents } from "./useEvents"
 export { useIsAuthorized } from "./useIsAuthorized"
