@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useMutation, type UseMutationResult } from "@tanstack/react-query"
 import { bytesToHex } from "@helios-lang/codec-utils"
 import { useCloudConfig } from "./useCloudConfig"
@@ -31,21 +32,28 @@ type NetlifySite = {
 type NetlifyDeploy = {
     id: string
     state?: string
+    error_message?: string | null
     required_functions?: string[]
 }
 
-export function useDeployNetlify(): UseMutationResult<
+export type DeployNetlifyResult = UseMutationResult<
     void,
     Error,
     DeployNetlifyArgs,
     undefined
-> {
+> & {
+    deploymentStep: string
+}
+
+export function useDeployNetlify(): DeployNetlifyResult {
     const [cloudConfig, saveCloudConfig] = useCloudConfig()
     const [privateKey] = usePrivateKey()
+    const [deploymentStep, setDeploymentStep] = useState("")
 
-    return useMutation({
+    const mutation = useMutation<void, Error, DeployNetlifyArgs, undefined>({
         mutationKey: ["netlify-deploy"],
         mutationFn: async ({ stage }) => {
+            setDeploymentStep("Checking deployment configuration")
             if (!cloudConfig.netlifyToken || !privateKey) {
                 throw new Error(
                     "Netlify and oracle credentials must be configured"
@@ -54,42 +62,105 @@ export function useDeployNetlify(): UseMutationResult<
 
             const token = cloudConfig.netlifyToken
             const stageConfig = stages[stage]
-            const secrets = await fetchPlatformSecrets(
-                stageConfig.baseUrl,
-                privateKey
+            const secrets = await runDeploymentStep(
+                "Fetching validator secrets from PBG",
+                setDeploymentStep,
+                () => fetchPlatformSecrets(stageConfig.baseUrl, privateKey)
             )
-            const site = await getOrCreateSite(
-                token,
-                cloudConfig.netlifySiteIds[stage]
+            const site = await runDeploymentStep(
+                "Finding or creating the Netlify project",
+                setDeploymentStep,
+                () => getOrCreateSite(token, cloudConfig.netlifySiteIds[stage])
             )
 
             if (cloudConfig.netlifySiteIds[stage] !== site.id) {
-                await saveCloudConfig.mutateAsync({
-                    ...cloudConfig,
-                    netlifySiteIds: {
-                        ...cloudConfig.netlifySiteIds,
-                        [stage]: site.id
-                    }
-                })
+                await runDeploymentStep(
+                    "Saving the Netlify project ID",
+                    setDeploymentStep,
+                    () =>
+                        saveCloudConfig.mutateAsync({
+                            ...cloudConfig,
+                            netlifySiteIds: {
+                                ...cloudConfig.netlifySiteIds,
+                                [stage]: site.id
+                            }
+                        })
+                )
             }
 
-            await setEnvironmentVariables(token, site, {
-                PRIVATE_KEY: privateKey,
-                BLOCKFROST_API_KEY: secrets.blockfrostApiKey,
-                DVP_ASSETS_VALIDATOR_ADDRESS: stageConfig.assetsValidatorAddress
-            })
+            await runDeploymentStep(
+                `Configuring Netlify project ${site.id}`,
+                setDeploymentStep,
+                () =>
+                    setEnvironmentVariables(token, site, {
+                        PRIVATE_KEY: privateKey,
+                        BLOCKFROST_API_KEY: secrets.blockfrostApiKey,
+                        DVP_ASSETS_VALIDATOR_ADDRESS:
+                            stageConfig.assetsValidatorAddress
+                    })
+            )
 
-            const functionZip = await getValidatorZip(`${FUNCTION_NAME}.js`)
-            await deployFunction(token, site.id, functionZip)
+            const functionZip = await runDeploymentStep(
+                "Preparing the validator function bundle",
+                setDeploymentStep,
+                () => getValidatorZip(`${FUNCTION_NAME}.js`)
+            )
+            await runDeploymentStep(
+                `Publishing the validator to Netlify project ${site.id}`,
+                setDeploymentStep,
+                () => deployFunction(token, site.id, functionZip)
+            )
+            await runDeploymentStep(
+                "Making the production validator endpoint public",
+                setDeploymentStep,
+                () => makeProductionPublic(token, site.id)
+            )
 
             const endpoint = `${site.ssl_url || site.url}/.netlify/functions/${FUNCTION_NAME}`
-            await waitForValidatorEndpoint(endpoint)
-            await syncFunctionURL(endpoint, stageConfig.baseUrl, privateKey)
+            await runDeploymentStep(
+                `Verifying ${endpoint}`,
+                setDeploymentStep,
+                () => waitForValidatorEndpoint(endpoint)
+            )
+            await runDeploymentStep(
+                "Registering the validator endpoint with PBG",
+                setDeploymentStep,
+                () => syncFunctionURL(endpoint, stageConfig.baseUrl, privateKey)
+            )
+            setDeploymentStep("Deployment complete")
         }
     })
+
+    return Object.assign(mutation, { deploymentStep })
+}
+
+async function runDeploymentStep<T>(
+    step: string,
+    setStep: (step: string) => void,
+    action: () => Promise<T>
+): Promise<T> {
+    setStep(step)
+    try {
+        return await action()
+    } catch (error) {
+        const message =
+            error instanceof Error ? error.message : JSON.stringify(error)
+        const networkHint = isBrowserNetworkError(message)
+            ? " The browser could not complete this cross-origin request. Check the network connection, content blockers, and the browser console."
+            : ""
+        throw new Error(`${step} failed: ${message}.${networkHint}`)
+    }
+}
+
+function isBrowserNetworkError(message: string): boolean {
+    return /load failed|failed to fetch|networkerror|network request failed/i.test(
+        message
+    )
 }
 
 async function waitForValidatorEndpoint(endpoint: string): Promise<void> {
+    let lastResult = "no response"
+
     for (let attempt = 0; attempt < 30; attempt++) {
         try {
             const response = await fetch(endpoint, {
@@ -101,24 +172,29 @@ async function waitForValidatorEndpoint(endpoint: string): Promise<void> {
             // The validator rejects this deliberately incomplete request. A 400
             // proves that it loaded before we register its URL.
             if (response.status == 400) return
+            lastResult = `HTTP ${response.status} ${response.statusText}`
             if (response.status == 401 || response.status == 403) {
                 throw new Error(
-                    "The deployed Netlify validator is not publicly accessible"
+                    `The validator is deployed but Netlify project visibility is still private (${lastResult})`
                 )
             }
         } catch (error) {
             if (
                 error instanceof Error &&
-                error.message.includes("not publicly accessible")
+                error.message.includes("project visibility is still private")
             ) {
                 throw error
             }
+            lastResult =
+                error instanceof Error ? error.message : JSON.stringify(error)
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000))
     }
 
-    throw new Error("The deployed Netlify validator did not become ready")
+    throw new Error(
+        `The deployed Netlify validator did not become ready; last result: ${lastResult}`
+    )
 }
 
 async function netlifyFetch<T>(
@@ -126,18 +202,30 @@ async function netlifyFetch<T>(
     path: string,
     init: RequestInit = {}
 ): Promise<T> {
-    const response = await fetch(`${API_URL}${path}`, {
-        ...init,
-        headers: {
-            Authorization: `Bearer ${token}`,
-            ...init.headers
-        }
-    })
+    const url = `${API_URL}${path}`
+    const method = init.method ?? "GET"
+    let response: Response
+
+    try {
+        response = await fetch(url, {
+            ...init,
+            headers: {
+                Authorization: `Bearer ${token}`,
+                ...init.headers
+            }
+        })
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        throw new Error(
+            `${method} ${url} could not reach the Netlify API: ${message}`
+        )
+    }
 
     if (!response.ok) {
         const body = (await response.text()).slice(0, 1000)
+        const requestId = response.headers.get("x-request-id")
         throw new Error(
-            `Netlify request ${path} failed (${response.status} ${response.statusText})${body ? `: ${body}` : ""}`
+            `${method} ${url} returned HTTP ${response.status} ${response.statusText}${requestId ? ` (request ${requestId})` : ""}${body ? `: ${body}` : ""}`
         )
     }
 
@@ -175,9 +263,7 @@ async function getOrCreateSite(
         {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                sso_login: false
-            })
+            body: "{}"
         }
     )
 }
@@ -255,16 +341,6 @@ async function deployFunction(
         )
     }
 
-    // New Netlify accounts default API-created projects to team-login access.
-    // Validator endpoints must be public so the PBG batcher can call them.
-    await netlifyFetch<void>(token, `/sites/${encodeURIComponent(siteId)}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            sso_login: false
-        })
-    })
-
     for (let attempt = 0; attempt < 30; attempt++) {
         const current = await netlifyFetch<NetlifyDeploy>(
             token,
@@ -273,11 +349,32 @@ async function deployFunction(
         if (current.state == "ready") return
         if (current.state == "error") {
             throw new Error(
-                "Netlify failed to process the validator deployment"
+                `Netlify failed to process deploy ${deploy.id}${current.error_message ? `: ${current.error_message}` : ""}`
             )
         }
         await new Promise((resolve) => setTimeout(resolve, 1000))
     }
 
-    throw new Error("Timed out waiting for the Netlify deployment")
+    throw new Error(`Timed out waiting for Netlify deploy ${deploy.id}`)
+}
+
+async function makeProductionPublic(
+    token: string,
+    siteId: string
+): Promise<void> {
+    // On Netlify's credit-based plans, new projects can inherit private-by-default
+    // visibility. Netlify only permits “Make public” after the first successful
+    // production deploy. Protecting non-production deploys makes production public.
+    await netlifyFetch<NetlifySite>(
+        token,
+        `/sites/${encodeURIComponent(siteId)}`,
+        {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                sso_login: true,
+                sso_login_context: "non_production"
+            })
+        }
+    )
 }

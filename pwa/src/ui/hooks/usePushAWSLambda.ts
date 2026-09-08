@@ -359,7 +359,10 @@ export async function syncFunctionURL(
     })
 
     if (!response.ok) {
-        throw new Error(`failed to fetch ${url}`)
+        const body = (await response.text()).slice(0, 1000)
+        throw new Error(
+            `POST ${url} returned HTTP ${response.status} ${response.statusText}${body ? `: ${body}` : ""}`
+        )
     }
 }
 
@@ -378,7 +381,16 @@ export async function fetchPlatformSecrets(
         }
     })
 
-    const data = await response.text()
+    const body = await response.text()
+    if (!response.ok) {
+        throw new Error(
+            `GET ${url} returned HTTP ${response.status} ${response.statusText}${body ? `: ${body.slice(0, 1000)}` : ""}`
+        )
+    }
 
-    return JSON.parse(data) as Secrets // TODO: type-safe
+    try {
+        return JSON.parse(body) as Secrets // TODO: type-safe
+    } catch {
+        throw new Error(`GET ${url} returned an invalid JSON response`)
+    }
 }
