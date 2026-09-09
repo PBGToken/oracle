@@ -112,10 +112,25 @@ export async function getValidatorZip(
 
     const jsContent = await response.text()
 
-    const zip = new JSZip()
-    zip.file(entryFilename, jsContent)
+    return createValidatorZip(jsContent, entryFilename)
+}
 
-    const zipped = await zip.generateAsync({ type: "uint8array" })
+export async function createValidatorZip(
+    jsContent: string,
+    entryFilename: string = "index.js"
+): Promise<Uint8Array> {
+    const zip = new JSZip()
+    // ZIP timestamps are part of the function digest. A stable local timestamp
+    // lets AWS and Netlify reuse an unchanged validator instead of uploading a
+    // different multi-megabyte archive after every click.
+    zip.file(entryFilename, jsContent, { date: new Date(1980, 0, 1) })
+
+    const zipped = await zip.generateAsync({
+        type: "uint8array",
+        platform: "DOS",
+        compression: "DEFLATE",
+        compressionOptions: { level: 9 }
+    })
 
     return zipped
 }

@@ -27,6 +27,7 @@ type NetlifySite = {
     account_id: string
     ssl_url: string
     url: string
+    published_deploy?: NetlifyDeploy | null
 }
 
 type NetlifyDeploy = {
@@ -34,6 +35,11 @@ type NetlifyDeploy = {
     state?: string
     error_message?: string | null
     required_functions?: string[]
+    available_functions?: {
+        n: string
+        d: string
+        s?: number
+    }[]
 }
 
 export type DeployNetlifyResult = UseMutationResult<
@@ -88,7 +94,7 @@ export function useDeployNetlify(): DeployNetlifyResult {
                 )
             }
 
-            await runDeploymentStep(
+            const environmentChanged = await runDeploymentStep(
                 `Configuring Netlify project ${site.id}`,
                 setDeploymentStep,
                 () =>
@@ -106,9 +112,16 @@ export function useDeployNetlify(): DeployNetlifyResult {
                 () => getValidatorZip(`${FUNCTION_NAME}.js`)
             )
             await runDeploymentStep(
-                `Publishing the validator to Netlify project ${site.id}`,
+                `Checking the published validator in Netlify project ${site.id}`,
                 setDeploymentStep,
-                () => deployFunction(token, site.id, functionZip)
+                () =>
+                    deployFunctionIfChanged(
+                        token,
+                        site,
+                        functionZip,
+                        setDeploymentStep,
+                        environmentChanged
+                    )
             )
             await runDeploymentStep(
                 "Making the production validator endpoint public",
@@ -272,10 +285,17 @@ async function setEnvironmentVariables(
     token: string,
     site: NetlifySite,
     values: Record<string, string>
-): Promise<void> {
+): Promise<boolean> {
     const path = `/accounts/${encodeURIComponent(site.account_id)}/env?site_id=${encodeURIComponent(site.id)}`
-    const existing = await netlifyFetch<{ key: string }[]>(token, path)
-    const existingKeys = new Set(existing.map(({ key }) => key))
+    const existing = await netlifyFetch<
+        {
+            key: string
+            values?: { context: string; value?: string }[]
+        }[]
+    >(token, path)
+    const existingByKey = new Map(
+        existing.map((variable) => [variable.key, variable])
+    )
     const variables: {
         key: string
         values: { context: string; value: string }[]
@@ -285,22 +305,29 @@ async function setEnvironmentVariables(
         values: [{ context: "all", value }],
         is_secret: false
     }))
-    const missing = variables.filter(({ key }) => !existingKeys.has(key))
+    const missing = variables.filter(({ key }) => !existingByKey.has(key))
+    const changed = variables.filter((variable) => {
+        const existingVariable = existingByKey.get(variable.key)
+        if (!existingVariable) return false
+
+        const previous = existingVariable.values?.find(
+            ({ context }) => context == "all"
+        )?.value
+        return previous !== variable.values[0].value
+    })
 
     await Promise.all(
-        variables
-            .filter(({ key }) => existingKeys.has(key))
-            .map((variable) =>
-                netlifyFetch<void>(
-                    token,
-                    `/accounts/${encodeURIComponent(site.account_id)}/env/${encodeURIComponent(variable.key)}?site_id=${encodeURIComponent(site.id)}`,
-                    {
-                        method: "PUT",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(variable)
-                    }
-                )
+        changed.map((variable) =>
+            netlifyFetch<void>(
+                token,
+                `/accounts/${encodeURIComponent(site.account_id)}/env/${encodeURIComponent(variable.key)}?site_id=${encodeURIComponent(site.id)}`,
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(variable)
+                }
             )
+        )
     )
 
     if (missing.length > 0) {
@@ -310,15 +337,53 @@ async function setEnvironmentVariables(
             body: JSON.stringify(missing)
         })
     }
+
+    return missing.length > 0 || changed.length > 0
 }
 
-async function deployFunction(
+export async function deployFunctionIfChanged(
     token: string,
-    siteId: string,
-    functionZip: Uint8Array
-): Promise<void> {
+    site: NetlifySite,
+    functionZip: Uint8Array,
+    setStep: (step: string) => void,
+    environmentChanged: boolean
+): Promise<"deployed" | "skipped"> {
     const digest = await crypto.subtle.digest("SHA-256", functionZip)
     const sha = bytesToHex(Array.from(new Uint8Array(digest)))
+
+    if (
+        !environmentChanged &&
+        hasExpectedFunction(site.published_deploy, sha)
+    ) {
+        setStep("Published validator is unchanged; skipping Netlify deployment")
+        return "skipped"
+    }
+
+    setStep(
+        environmentChanged
+            ? "Validator configuration changed; publishing a new Netlify deploy"
+            : "Validator code changed; publishing a new Netlify deploy"
+    )
+    await deployFunction(token, site.id, functionZip, setStep, sha)
+    return "deployed"
+}
+
+export async function deployFunction(
+    token: string,
+    siteId: string,
+    functionZip: Uint8Array,
+    setStep: (step: string) => void,
+    knownSha?: string
+): Promise<void> {
+    const sha =
+        knownSha ??
+        bytesToHex(
+            Array.from(
+                new Uint8Array(
+                    await crypto.subtle.digest("SHA-256", functionZip)
+                )
+            )
+        )
     const deploy = await netlifyFetch<NetlifyDeploy>(
         token,
         `/sites/${encodeURIComponent(siteId)}/deploys`,
@@ -329,33 +394,91 @@ async function deployFunction(
         }
     )
 
+    let uncertainUploadError: Error | undefined
+
     if (deploy.required_functions?.includes(sha)) {
-        await netlifyFetch<void>(
-            token,
-            `/deploys/${encodeURIComponent(deploy.id)}/functions/${FUNCTION_NAME}?runtime=js&timeout=30&size=${functionZip.byteLength}`,
-            {
-                method: "PUT",
-                headers: { "Content-Type": "application/octet-stream" },
-                body: functionZip
+        try {
+            await netlifyFetch<void>(
+                token,
+                `/deploys/${encodeURIComponent(deploy.id)}/functions/${FUNCTION_NAME}?runtime=js&timeout=30&size=${functionZip.byteLength}`,
+                {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/octet-stream" },
+                    body: functionZip
+                }
+            )
+        } catch (error) {
+            if (
+                !(error instanceof Error) ||
+                !isBrowserNetworkError(error.message)
+            ) {
+                throw error
             }
-        )
+
+            // Safari can report “Load failed” when it cannot expose Netlify's PUT
+            // response even though Netlify accepted and processed the function.
+            // Do not upload twice. The deploy status and digest are authoritative.
+            uncertainUploadError = error
+            setStep(
+                "Netlify did not return the upload response; verifying the deploy"
+            )
+        }
     }
 
+    let lastPollError: Error | undefined
     for (let attempt = 0; attempt < 30; attempt++) {
-        const current = await netlifyFetch<NetlifyDeploy>(
-            token,
-            `/deploys/${encodeURIComponent(deploy.id)}`
-        )
-        if (current.state == "ready") return
+        let current: NetlifyDeploy
+        try {
+            current = await netlifyFetch<NetlifyDeploy>(
+                token,
+                `/deploys/${encodeURIComponent(deploy.id)}`
+            )
+            lastPollError = undefined
+        } catch (error) {
+            if (
+                !(error instanceof Error) ||
+                !isBrowserNetworkError(error.message)
+            ) {
+                throw error
+            }
+            lastPollError = error
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+            continue
+        }
+
+        if (current.state == "ready") {
+            if (!uncertainUploadError || hasExpectedFunction(current, sha)) {
+                return
+            }
+
+            throw new Error(
+                `${uncertainUploadError.message}; Netlify marked deploy ${deploy.id} ready without the expected ${FUNCTION_NAME} function digest ${sha}`
+            )
+        }
         if (current.state == "error") {
             throw new Error(
                 `Netlify failed to process deploy ${deploy.id}${current.error_message ? `: ${current.error_message}` : ""}`
             )
         }
+
         await new Promise((resolve) => setTimeout(resolve, 1000))
     }
 
-    throw new Error(`Timed out waiting for Netlify deploy ${deploy.id}`)
+    throw new Error(
+        `Timed out waiting for Netlify deploy ${deploy.id}${lastPollError ? `; last status request failed: ${lastPollError.message}` : ""}`
+    )
+}
+
+function hasExpectedFunction(
+    deploy: NetlifyDeploy | null | undefined,
+    sha: string
+): boolean {
+    return Boolean(
+        deploy?.state == "ready" &&
+            deploy.available_functions?.some(
+                (fn) => fn.n == FUNCTION_NAME && fn.d == sha
+            )
+    )
 }
 
 async function makeProductionPublic(
