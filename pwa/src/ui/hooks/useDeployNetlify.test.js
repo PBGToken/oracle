@@ -55,7 +55,11 @@ describe("deployFunction", () => {
                 })
             }
 
-            return jsonResponse({ id: "deploy-config", state: "ready" })
+            return jsonResponse({
+                id: "deploy-config",
+                state: "ready",
+                available_functions: [{ n: "validator", d: digest }]
+            })
         }
 
         const result = await deployFunctionIfChanged(

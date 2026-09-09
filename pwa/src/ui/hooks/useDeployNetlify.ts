@@ -12,6 +12,8 @@ import { type StageName, stages } from "./stages"
 
 const API_URL = "https://api.netlify.com/api/v1"
 const FUNCTION_NAME = "validator"
+const DEPLOY_POLL_INTERVAL_MS = 2_000
+const DEPLOY_TIMEOUT_MS = 10 * 60_000
 
 type DeployNetlifyArgs = {
     stage: StageName
@@ -33,6 +35,8 @@ type NetlifySite = {
 type NetlifyDeploy = {
     id: string
     state?: string
+    created_at?: string
+    updated_at?: string
     error_message?: string | null
     required_functions?: string[]
     available_functions?: {
@@ -425,8 +429,10 @@ export async function deployFunction(
         }
     }
 
+    const startedAt = Date.now()
     let lastPollError: Error | undefined
-    for (let attempt = 0; attempt < 30; attempt++) {
+    let lastState = deploy.state ?? "new"
+    while (Date.now() - startedAt < DEPLOY_TIMEOUT_MS) {
         let current: NetlifyDeploy
         try {
             current = await netlifyFetch<NetlifyDeploy>(
@@ -434,6 +440,7 @@ export async function deployFunction(
                 `/deploys/${encodeURIComponent(deploy.id)}`
             )
             lastPollError = undefined
+            lastState = current.state ?? "unknown"
         } catch (error) {
             if (
                 !(error instanceof Error) ||
@@ -442,17 +449,22 @@ export async function deployFunction(
                 throw error
             }
             lastPollError = error
-            await new Promise((resolve) => setTimeout(resolve, 1000))
+            const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000)
+            setStep(
+                `Waiting for Netlify deploy ${deploy.id} (${elapsedSeconds}s); its status request failed, retrying`
+            )
+            await delay(DEPLOY_POLL_INTERVAL_MS)
             continue
         }
 
         if (current.state == "ready") {
-            if (!uncertainUploadError || hasExpectedFunction(current, sha)) {
-                return
-            }
+            if (hasExpectedFunction(current, sha)) return
 
+            const uploadDetail = uncertainUploadError
+                ? `${uncertainUploadError.message}; `
+                : ""
             throw new Error(
-                `${uncertainUploadError.message}; Netlify marked deploy ${deploy.id} ready without the expected ${FUNCTION_NAME} function digest ${sha}`
+                `${uploadDetail}Netlify marked deploy ${deploy.id} ready without the expected ${FUNCTION_NAME} function digest ${sha}`
             )
         }
         if (current.state == "error") {
@@ -461,12 +473,32 @@ export async function deployFunction(
             )
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000)
+        setStep(
+            `Waiting for Netlify deploy ${deploy.id}: ${lastState} (${elapsedSeconds}s)`
+        )
+        await delay(DEPLOY_POLL_INTERVAL_MS)
+    }
+
+    // The final poll may race the transition to ready. Inspect the site's
+    // published deploy once more before reporting a timeout.
+    try {
+        const site = await netlifyFetch<NetlifySite>(
+            token,
+            `/sites/${encodeURIComponent(siteId)}`
+        )
+        if (hasExpectedFunction(site.published_deploy, sha)) return
+    } catch (error) {
+        if (error instanceof Error) lastPollError = error
     }
 
     throw new Error(
-        `Timed out waiting for Netlify deploy ${deploy.id}${lastPollError ? `; last status request failed: ${lastPollError.message}` : ""}`
+        `Timed out after ${DEPLOY_TIMEOUT_MS / 60_000} minutes waiting for Netlify deploy ${deploy.id}; last state was ${lastState}${lastPollError ? `; last status request failed: ${lastPollError.message}` : ""}`
     )
+}
+
+function delay(milliseconds: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, milliseconds))
 }
 
 function hasExpectedFunction(
