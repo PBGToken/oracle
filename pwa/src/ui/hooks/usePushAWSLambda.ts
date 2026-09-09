@@ -103,6 +103,10 @@ function getBaseURL(): string {
 export async function getValidatorZip(
     entryFilename: string = "index.js"
 ): Promise<Uint8Array> {
+    return createValidatorZip(await getValidatorJS(), entryFilename)
+}
+
+export async function getValidatorJS(): Promise<string> {
     const url = `${getBaseURL()}/aws-validator.js`
     const response = await fetch(url)
 
@@ -110,9 +114,7 @@ export async function getValidatorZip(
         throw new Error(`failed to fetch "${url}"`)
     }
 
-    const jsContent = await response.text()
-
-    return createValidatorZip(jsContent, entryFilename)
+    return response.text()
 }
 
 export async function createValidatorZip(

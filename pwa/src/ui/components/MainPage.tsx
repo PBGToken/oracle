@@ -45,7 +45,9 @@ export function MainPage() {
                                 Cloud provider:{" "}
                                 {cloudConfig.provider == "netlify"
                                     ? "Netlify"
-                                    : "AWS"}
+                                    : cloudConfig.provider == "vercel"
+                                      ? "Vercel"
+                                      : "AWS"}
                             </Button>
                         </Column>
                     </StatusPanel>

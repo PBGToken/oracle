@@ -1,7 +1,11 @@
 import { type FeedEvent } from "./FeedEvent"
 import { Secrets } from "./Secrets"
 import { StageName } from "./stages"
-import { DEFAULT_CLOUD_CONFIG, type CloudConfig } from "../cloud"
+import {
+    DEFAULT_CLOUD_CONFIG,
+    normalizeCloudConfig,
+    type CloudConfig
+} from "../cloud"
 
 const DB_NAME = "ServiceWorkerDB"
 const DB_VERSION = 1
@@ -79,8 +83,10 @@ export function setAWSAccessKey(
 }
 
 // Existing installations have no provider entry, so AWS is the compatibility default.
-export function getCloudConfig(): Promise<CloudConfig> {
-    return getConfig("cloudConfig", DEFAULT_CLOUD_CONFIG)
+export async function getCloudConfig(): Promise<CloudConfig> {
+    return normalizeCloudConfig(
+        await getConfig("cloudConfig", DEFAULT_CLOUD_CONFIG)
+    )
 }
 
 export function setCloudConfig(config: CloudConfig): Promise<void> {

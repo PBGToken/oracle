@@ -1,5 +1,6 @@
 export { useAWSAccessKey } from "./useAWSAccessKey"
 export { useCloudConfig } from "./useCloudConfig"
+export { useDeployVercel } from "./useDeployVercel"
 export { useDeviceId } from "./useDeviceId"
 export { useEvents } from "./useEvents"
 export { useIsAuthorized } from "./useIsAuthorized"

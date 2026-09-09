@@ -16,12 +16,15 @@ export function CloudProviderForm({ onClose }: { onClose: () => void }) {
     const [awsKey, setAWSKey] = useState(savedAWSKey)
     const [awsSecret, setAWSSecret] = useState(savedAWSSecret)
     const [netlifyToken, setNetlifyToken] = useState(cloudConfig.netlifyToken)
+    const [vercelToken, setVercelToken] = useState(cloudConfig.vercelToken)
     const [error, setError] = useState("")
     const pending = saveCloudConfig.isPending || saveAWSAccessKey.isPending
     const valid =
         provider == "aws"
             ? awsKey.trim() != "" && awsSecret.trim() != ""
-            : netlifyToken.trim() != ""
+            : provider == "netlify"
+              ? netlifyToken.trim() != ""
+              : vercelToken.trim() != ""
 
     return (
         <Form
@@ -39,7 +42,8 @@ export function CloudProviderForm({ onClose }: { onClose: () => void }) {
                     await saveCloudConfig.mutateAsync({
                         ...cloudConfig,
                         provider,
-                        netlifyToken: netlifyToken.trim()
+                        netlifyToken: netlifyToken.trim(),
+                        vercelToken: vercelToken.trim()
                     })
                     onClose()
                 } catch (error) {
@@ -63,6 +67,7 @@ export function CloudProviderForm({ onClose }: { onClose: () => void }) {
                 >
                     <option value="aws">AWS Lambda</option>
                     <option value="netlify">Netlify Functions</option>
+                    <option value="vercel">Vercel Functions</option>
                 </select>
             </label>
 
@@ -90,7 +95,7 @@ export function CloudProviderForm({ onClose }: { onClose: () => void }) {
                         />
                     </label>
                 </>
-            ) : (
+            ) : provider == "netlify" ? (
                 <label>
                     Netlify personal access token
                     <input
@@ -99,6 +104,17 @@ export function CloudProviderForm({ onClose }: { onClose: () => void }) {
                         onChange={(event) =>
                             setNetlifyToken(event.target.value)
                         }
+                        autoComplete="off"
+                        disabled={pending}
+                    />
+                </label>
+            ) : (
+                <label>
+                    Vercel personal access token
+                    <input
+                        type="password"
+                        value={vercelToken}
+                        onChange={(event) => setVercelToken(event.target.value)}
                         autoComplete="off"
                         disabled={pending}
                     />
