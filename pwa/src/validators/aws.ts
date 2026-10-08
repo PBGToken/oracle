@@ -49,6 +49,7 @@ import {
     WrappedAssetMetadata,
     SelfReportedAssetMetadata
 } from "@pbgtoken/rwa-contract"
+import { fetchPbgV2UsdPrice } from "./pbgV2Price"
 
 type RWAMetadata = Schema.Schema.Type<typeof RWAMetadata>
 type RWAState = RWAMetadata["state"]
@@ -81,8 +82,6 @@ const DVP_ASSETS_VALIDATOR_ADDRESS = makeShelleyAddress(
 const IS_MAINNET = DVP_ASSETS_VALIDATOR_ADDRESS.mainnet
 const PBG_V2_PRICE_KEY = "PBGV2"
 const PBG_V2_DECIMALS = 6
-const PBG_V2_USD_PRICE_URL =
-    "https://prices.pbg.io/prices/spot?asset=PBG&currency=USD&source=portfolio-registry"
 
 type PbgV2StageConfig = {
     policyId: string
@@ -91,11 +90,6 @@ type PbgV2StageConfig = {
     vaultAddress: string
     assetClass: string
     priceAssetClass: string
-}
-
-type PbgV2SpotPriceResponse = {
-    asOf: number
-    price: number
 }
 
 const PBG_V2_BY_STAGE: Record<"Mainnet" | "Preprod", PbgV2StageConfig> = {
@@ -918,28 +912,6 @@ function validateWrappedTokenPriceWithCoingecko(
             )
         )
     }
-}
-
-async function fetchPbgV2UsdPrice(): Promise<number> {
-    const response = await fetch(PBG_V2_USD_PRICE_URL)
-
-    if (!response.ok) {
-        throw new Error(
-            `failed to fetch V2 PBG USD price (${response.status} ${response.statusText})`
-        )
-    }
-
-    const body = (await response.json()) as PbgV2SpotPriceResponse
-
-    if (!Number.isFinite(body.price) || body.price <= 0) {
-        throw new Error(`invalid V2 PBG USD price ${body.price}`)
-    }
-
-    if (!Number.isFinite(body.asOf) || body.asOf <= 0) {
-        throw new Error(`invalid V2 PBG USD price timestamp ${body.asOf}`)
-    }
-
-    return body.price
 }
 
 function getPbgV2AssetInfo(
