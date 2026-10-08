@@ -50,6 +50,7 @@ import {
     SelfReportedAssetMetadata
 } from "@pbgtoken/rwa-contract"
 import { fetchPbgV2UsdPrice } from "./pbgV2Price"
+import { parseRequestBody } from "./requestBody"
 
 type RWAMetadata = Schema.Schema.Type<typeof RWAMetadata>
 type RWAState = RWAMetadata["state"]
@@ -117,7 +118,7 @@ export async function handler(
     _content: any
 ): Promise<APIGatewayProxyResult> {
     try {
-        const request: ValidationRequest = JSON.parse(
+        const request = parseRequestBody<ValidationRequest>(
             expectDefined(event.body, "request body undefined")
         )
         const signature = await validateRequest(request)
